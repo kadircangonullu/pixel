@@ -15,19 +15,22 @@ let activeEvent = null;
 let seasonResultShown = false;
 let seasonUiTimer = null;
 let realtimePixelChannel = null;
+let realtimeBattleChannel = null;
+let battleStateReloadTimer = null;
+let battleMapSyncAttempted = false;
 let remotePixelsLoaded = false;
 let remoteSyncPending = false;
 let lockedTeamId = localStorage.getItem(TEAM_LOCK_STORAGE_KEY) || null;
 let onboardingCandidateId = null;
 
 const teams = [
-  { id: "crush", name: "CRUSH", color: "#ff4b9b", city: "İstanbul", points: 1284221, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "manifest", name: "MANIFEST", color: "#4ba8ff", city: "İzmir", points: 1107542, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "aura", name: "AURA", color: "#9c6bff", city: "Ankara", points: 842193, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "karm6", name: "KARM6", color: "#ff7b38", city: "Antalya", points: 736481, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "mantra", name: "MANTRA", color: "#ffcf42", city: "Samsun", points: 692153, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "radikal", name: "RADİKAL", color: "#ee4054", city: "Erzurum", points: 581239, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "perma", name: "PERMA", color: "#4ce3a4", city: "Gaziantep", points: 477152, pixels: 0, capturedProvinces: 0, securedRegions: 0 }
+  { id: "crush", name: "CRUSH", color: "#ff4b9b", city: "İstanbul", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "manifest", name: "MANIFEST", color: "#4ba8ff", city: "İzmir", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "aura", name: "AURA", color: "#9c6bff", city: "Ankara", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "karm6", name: "KARM6", color: "#ff7b38", city: "Antalya", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "mantra", name: "MANTRA", color: "#ffcf42", city: "Samsun", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "radikal", name: "RADİKAL", color: "#ee4054", city: "Erzurum", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "perma", name: "PERMA", color: "#4ce3a4", city: "Gaziantep", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 }
 ];
 
 const REGION_PROVINCES = {
@@ -376,7 +379,7 @@ async function loadTurkeyMap() {
     loadingEl.classList.add("hidden");
     resetViewToTurkey();
     renderAll();
-    if (SUPABASE_ENABLED && authUser) await syncRemotePixels();
+    if (SUPABASE_ENABLED && authUser) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); }
     scheduleDraw();
   } catch (error) {
     console.error(error);
@@ -563,19 +566,27 @@ function getProvinceStats(name) {
 }
 
 function evaluateProvinceCapture(provinceName) {
-  const feature = provinceByName.get(provinceName); if (!feature) return;
+  const feature = provinceByName.get(provinceName);
+  if (!feature) return;
   const stats = getProvinceStats(provinceName);
   const winnerId = stats.control >= 100 ? stats.leaderId : null;
   const oldWinner = feature._capturedBy;
+
+  // Supabase modunda puan/bonusun tek otoritesi V12 PostgreSQL savaş motorudur.
+  // Client yalnızca anlık harita görünümünü tahmini olarak günceller.
+  if (SUPABASE_ENABLED) {
+    feature._capturedBy = winnerId;
+    recalcCapturedCounts();
+    return;
+  }
+
   if (winnerId && winnerId !== oldWinner) {
     feature._capturedBy = winnerId;
     const team = teamById(winnerId);
     team.points += PROVINCE_BONUS;
     addBattleLog(`${team.name}, ${provinceName} ilini tamamen ele geçirdi.`, PROVINCE_BONUS);
     showToast(`${provinceName} artık tamamen ${team.name} kontrolünde! +${PROVINCE_BONUS.toLocaleString("tr-TR")}`);
-  } else if (!winnerId && oldWinner && !feature._home) {
-    feature._capturedBy = null;
-  } else if (!winnerId && oldWinner && feature._home) {
+  } else if (!winnerId && oldWinner) {
     feature._capturedBy = null;
     feature._home = false;
   }
@@ -584,6 +595,7 @@ function evaluateProvinceCapture(provinceName) {
 }
 
 function evaluateRegionCaptures() {
+  if (SUPABASE_ENABLED) return;
   for (const region of regions) {
     const captured = region.provinceNames.map(name => provinceByName.get(name)?._capturedBy || null);
     const first = captured[0];
@@ -1062,6 +1074,7 @@ document.getElementById("confirmPlaceBtn").onclick = async () => {
       applySyncedPixel(row, true);
       cooldownEnd = row.cooldown_until ? new Date(row.cooldown_until).getTime() : Date.now() + COOLDOWN_MS;
       localStorage.setItem(COOLDOWN_STORAGE_KEY, String(cooldownEnd));
+      scheduleBattleStateReload();
     }
   } else {
     applyLocalPlacement(x, y, selectedTeam.id, selectedColor, true);
@@ -1097,7 +1110,7 @@ function applyLocalPlacement(x, y, teamId, color, countProgress=false) {
       if (counts) counts[oldOwner] = Math.max(0, (counts[oldOwner] || 0) - 1);
     }
     team.pixels++;
-    if (countProgress) team.points += 10;
+    if (countProgress && !SUPABASE_ENABLED) team.points += 10;
     if (counts) counts[teamId] = (counts[teamId] || 0) + 1;
   }
   if (countProgress) {
@@ -1335,6 +1348,135 @@ async function openSeasonArchive() {
   }).join("") || `<div class="season-list-empty">Henüz sezon bulunmuyor.</div>`;
 }
 
+
+// V12 — server-side battle engine -------------------------------------------------
+function buildProvinceRuns() {
+  const runs = [];
+  for (let y = 0; y < WORLD_HEIGHT; y++) {
+    let x = 0;
+    while (x < WORLD_WIDTH) {
+      const pIndex = provinceIndexGrid[idx(x, y)];
+      if (!pIndex) { x++; continue; }
+      const startX = x;
+      x++;
+      while (x < WORLD_WIDTH && provinceIndexGrid[idx(x, y)] === pIndex) x++;
+      runs.push({ y, x1: startX, x2: x - 1, province_name: provinceNamesByIndex[pIndex] });
+    }
+  }
+  return runs;
+}
+
+function buildProvinceTotalsPayload() {
+  return [...provinceCellTotals.entries()].map(([province_name, total_cells]) => ({
+    province_name,
+    total_cells,
+    region_name: getRegionNameForProvince(province_name),
+    home_team_id: HOME_PROVINCES[province_name] || null
+  }));
+}
+
+async function ensureServerBattleMap() {
+  if (!SUPABASE_ENABLED || !authUser || !mapReady || battleMapSyncAttempted) return;
+  battleMapSyncAttempted = true;
+  const { data: isAdmin } = await supabaseClient.rpc("is_admin");
+  const { data: status, error: statusError } = await supabaseClient.rpc("battle_map_status");
+  if (statusError) {
+    console.warn("V12 battle map status unavailable", statusError);
+    return;
+  }
+  const row = Array.isArray(status) ? status[0] : status;
+  if (Number(row?.province_count || 0) >= 81 && Number(row?.run_count || 0) > 0) return;
+  if (isAdmin !== true) {
+    showToast("V12 savaş haritası henüz admin tarafından sunucuya hazırlanmadı.");
+    return;
+  }
+
+  showToast("V12 sunucu savaş haritası ilk kez hazırlanıyor…");
+  const { error: beginError } = await supabaseClient.rpc("admin_begin_battle_map_sync");
+  if (beginError) { console.error(beginError); showToast(`Savaş haritası hazırlanamadı: ${beginError.message}`); return; }
+
+  const totals = buildProvinceTotalsPayload();
+  const { error: totalsError } = await supabaseClient.rpc("admin_sync_province_totals", { p_rows: totals });
+  if (totalsError) { console.error(totalsError); showToast(`İl toplamları gönderilemedi: ${totalsError.message}`); return; }
+
+  const runs = buildProvinceRuns();
+  const batchSize = 350;
+  for (let i = 0; i < runs.length; i += batchSize) {
+    const { error } = await supabaseClient.rpc("admin_sync_province_runs", { p_rows: runs.slice(i, i + batchSize) });
+    if (error) { console.error(error); showToast(`Harita koordinatları gönderilemedi: ${error.message}`); return; }
+  }
+
+  const { error: finalizeError } = await supabaseClient.rpc("admin_finalize_battle_map");
+  if (finalizeError) { console.error(finalizeError); showToast(`Savaş motoru başlatılamadı: ${finalizeError.message}`); return; }
+  showToast(`V12 savaş motoru hazır · ${runs.length.toLocaleString("tr-TR")} sınır satırı senkronlandı.`);
+}
+
+async function loadServerBattleState() {
+  if (!SUPABASE_ENABLED || !activeEvent || !supabaseClient) return;
+  const [scoresRes, provinceRes, regionRes, logRes] = await Promise.all([
+    supabaseClient.from("event_team_scores").select("team_id,owned_pixels,province_bonus,region_bonus,total_score").eq("event_id", activeEvent.id),
+    supabaseClient.from("province_control").select("province_name,team_id").eq("event_id", activeEvent.id),
+    supabaseClient.from("region_control").select("region_name,team_id").eq("event_id", activeEvent.id),
+    supabaseClient.from("battle_events").select("event_type,scope_name,team_id,previous_team_id,bonus_points,created_at").eq("event_id", activeEvent.id).order("created_at", { ascending:false }).limit(20)
+  ]);
+
+  if (!scoresRes.error) {
+    for (const team of teams) {
+      const row = (scoresRes.data || []).find(r => r.team_id === team.id);
+      team.pixels = Number(row?.owned_pixels || 0);
+      team.points = Number(row?.total_score || 0);
+    }
+  }
+  if (!provinceRes.error) {
+    for (const feature of provinceFeatures) feature._capturedBy = null;
+    for (const row of provinceRes.data || []) {
+      const f = provinceByName.get(row.province_name);
+      if (f) f._capturedBy = row.team_id || null;
+    }
+  }
+  if (!regionRes.error) {
+    for (const region of regions) region.securedBy = null;
+    for (const row of regionRes.data || []) {
+      const r = regions.find(x => x.name === row.region_name);
+      if (r) r.securedBy = row.team_id || null;
+    }
+  }
+  recalcCapturedCounts();
+
+  if (!logRes.error) {
+    const log = document.getElementById("battleLog");
+    if (log) {
+      const rows = logRes.data || [];
+      log.innerHTML = rows.length ? rows.map(row => {
+        const team = teamById(row.team_id);
+        const prev = teamById(row.previous_team_id);
+        const label = row.event_type === "PROVINCE_CAPTURE" ? `${team?.name || "—"}, ${row.scope_name} ilini ele geçirdi.`
+          : row.event_type === "PROVINCE_BROKEN" ? `${row.scope_name} üzerindeki ${prev?.name || "—"} tam hakimiyeti kırıldı.`
+          : row.event_type === "REGION_CAPTURE" ? `${team?.name || "—"}, ${row.scope_name} Bölgesi'ni tamamen aldı.`
+          : row.event_type === "REGION_BROKEN" ? `${row.scope_name} Bölgesi'ndeki ${prev?.name || "—"} hakimiyeti kırıldı.`
+          : `${row.scope_name} savaş durumu değişti.`;
+        return `<div class="log-item">${label}${Number(row.bonus_points || 0) ? ` <b>+${Number(row.bonus_points).toLocaleString("tr-TR")}</b>` : ""}<small>${new Date(row.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit",minute:"2-digit"})}</small></div>`;
+      }).join("") : `<div class="log-empty">Sunucu savaş geçmişi henüz boş.</div>`;
+    }
+  }
+  renderLeaderboard(); renderRegionBoard(); updateGlobalStats(); renderProvinceSpotlight(hoveredProvinceName);
+}
+
+function scheduleBattleStateReload() {
+  clearTimeout(battleStateReloadTimer);
+  battleStateReloadTimer = setTimeout(() => loadServerBattleState(), 180);
+}
+
+function subscribeRealtimeBattleState() {
+  if (!SUPABASE_ENABLED || !activeEvent || realtimeBattleChannel) return;
+  realtimeBattleChannel = supabaseClient.channel(`fanverse-battle-${activeEvent.id}`)
+    .on("postgres_changes", { event:"*", schema:"public", table:"event_team_scores", filter:`event_id=eq.${activeEvent.id}` }, scheduleBattleStateReload)
+    .on("postgres_changes", { event:"*", schema:"public", table:"province_control", filter:`event_id=eq.${activeEvent.id}` }, scheduleBattleStateReload)
+    .on("postgres_changes", { event:"*", schema:"public", table:"region_control", filter:`event_id=eq.${activeEvent.id}` }, scheduleBattleStateReload)
+    .on("postgres_changes", { event:"INSERT", schema:"public", table:"battle_events", filter:`event_id=eq.${activeEvent.id}` }, scheduleBattleStateReload)
+    .subscribe();
+}
+
 // V9 — optional Supabase auth + realtime pixel delta sync
 function setAuthStatus(text, kind="") {
   const el = document.getElementById("authStatus"); if (!el) return; el.textContent = text; el.className = `auth-status ${kind}`;
@@ -1379,7 +1521,7 @@ async function hydrateAccountFromSupabase() {
     savePlayerProfile();
   }
   renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI(); await updateAdminPanelVisibility();
-  if (mapReady) await syncRemotePixels(); else remoteSyncPending = true;
+  if (mapReady) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); } else remoteSyncPending = true;
 }
 async function syncRemotePixels() {
   if (!SUPABASE_ENABLED || !authUser || !activeEvent || !mapReady) return;
@@ -1410,7 +1552,7 @@ function subscribeRealtimePixels() {
       } else {
         const row = payload.new; if (row) applySyncedPixel(row, false);
       }
-      renderAll(); scheduleDraw();
+      renderAll(); scheduleDraw(); scheduleBattleStateReload();
     }).subscribe();
 }
 async function updateAdminPanelVisibility() {
@@ -1469,7 +1611,7 @@ async function initAccountLayer() {
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     authUser = session?.user || null; updateAuthChip();
     if (authUser) await hydrateAccountFromSupabase();
-    else { lockedTeamId = null; selectedTeam = null; document.getElementById("adminPanelBtn")?.classList.add("hidden"); renderAll(); }
+    else { lockedTeamId = null; selectedTeam = null; document.getElementById("adminPanelBtn")?.classList.add("hidden"); if (realtimeBattleChannel) { supabaseClient.removeChannel(realtimeBattleChannel); realtimeBattleChannel = null; } renderAll(); }
   });
 }
 
