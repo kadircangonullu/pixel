@@ -38,10 +38,11 @@
           <button class="nav-link active" data-target="map">HARİTA</button>
           <button class="nav-link" data-target="regions">BÖLGELER</button>
           <button class="nav-link" data-target="ranking">LİDERLİK</button>
+          <button class="nav-link" data-target="teamcenter">TAKIM MERKEZİ</button>
           <button class="nav-link" data-target="seasons">SEZONLAR</button>
           <button class="nav-link" data-target="guide">REHBER</button>
         </nav>
-        <div class="topbar-account"><a class="auth-chip admin-link hidden" id="adminPanelBtn" href="admin.html">ADMIN</a><button class="auth-chip" id="authBtn" type="button">DEMO MODU</button><button class="profile profile-button" id="profileOpenBtn" type="button" aria-label="Profili aç">
+        <div class="topbar-account"><button class="notification-btn hidden" id="notificationBtn" type="button" aria-label="Bildirimler">◆<span id="notificationBadge" class="notification-badge hidden">0</span></button><a class="auth-chip admin-link hidden" id="adminPanelBtn" href="admin.html">ADMIN</a><button class="auth-chip" id="authBtn" type="button">DEMO MODU</button><button class="profile profile-button" id="profileOpenBtn" type="button" aria-label="Profili aç">
           <div class="profile-avatar" id="profileAvatar">F</div>
           <div><strong id="profileName">guest</strong><small id="profileLevelText">Seviye 1 · 0 XP</small></div>
         </button></div>
@@ -50,7 +51,7 @@
       <div class="content">
         <section class="canvas-section">
           <div class="canvas-header">
-            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V15</span></div>
+            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V16</span></div>
             <div class="canvas-tools">
               <div class="view-switch" aria-label="Harita görünümü">
                 <button class="view-btn" data-view="artwork">ARTWORK</button>
@@ -111,6 +112,12 @@
             <div class="player-battle-stats" id="playerBattleStats"><div><small>MOD</small><strong>DEMO</strong></div></div>
             <div class="daily-title">GÜNLÜK GÖREVLER <span id="dailyResetText">bugün</span></div>
             <div class="daily-missions" id="dailyMissions"></div>
+          </section>
+
+          <section class="panel-card team-center-teaser" id="teamCenterTeaser">
+            <div class="panel-title-row"><div class="panel-title">TAKIM MERKEZİ</div><span class="tiny-note" id="teamRoleBadge">GİRİŞ GEREKLİ</span></div>
+            <div id="teamTargetMini" class="team-target-mini"><div class="log-empty">Takım hedefi ve artwork savunması için giriş yap.</div></div>
+            <button class="defense-action-btn full" id="openTeamCenterBtn">TAKIM MERKEZİNİ AÇ</button>
           </section>
 
           <section class="panel-card attack-center-card">
@@ -191,7 +198,10 @@
         <article><b>04</b><h3>İl ele geçir</h3><p>Bir ilin bütün oynanabilir pikselleri aynı fandoma geçtiğinde tam hakimiyet kazanılır ve il bonusu verilir.</p></article>
         <article><b>05</b><h3>Bölgeyi tamamla</h3><p>Coğrafi bölgedeki tüm illeri aynı fandom kontrol ederse büyük bölge bonusu kazanılır.</p></article>
         <article><b>06</b><h3>Savun</h3><p>Savunma görünümü kendi fandomundan olmayan pikselleri belirginleştirir; artwork sabotajlarını kolayca bulursun.</p></article>
-        <article><b>07</b><h3>Sezonu kazan</h3><p>Piksel katkısı, il bonusları ve bölge bonusları gerçek leaderboard puanına dönüşür.</p></article>
+        <article><b>07</b><h3>Takım merkezini kullan</h3><p>Fandom hedefini, riskli cepheleri ve takımının artwork şablonlarını tek panelden takip et.</p></article>
+        <article><b>08</b><h3>Artwork onar</h3><p>Şablon bütünlüğü düşerse bozuk veya yabancı sahipli piksellere doğrudan giderek tasarımı onar.</p></article>
+        <article><b>09</b><h3>Rolünü yükselt</h3><p>Katkına göre Çaylak'tan Savunmacı, Sanatçı, Stratejist ve Komutan gibi fandom rollerine yüksel.</p></article>
+        <article><b>10</b><h3>Sezonu kazan</h3><p>Piksel katkısı, il bonusları ve bölge bonusları gerçek leaderboard puanına dönüşür.</p></article>
       </div>
       <div class="guide-footer"><button class="place-btn small" id="guideGoMapBtn">HARİTAYA DÖN</button></div>
     </div>
@@ -210,11 +220,31 @@
         <div><small>SERİ</small><strong id="modalStreak">0 gün</strong></div>
         <div><small>FANDOM SIRASI</small><strong id="modalTeamRank">—</strong></div>
         <div><small>GERİ ALINAN</small><strong id="modalEnemyTaken">0</strong></div>
+        <div><small>FANDOM ROLÜ</small><strong id="modalRole">ÇAYLAK</strong></div>
       </div>
       <div class="profile-account-actions"><button id="logoutBtn" class="danger-btn" type="button">ÇIKIŞ YAP</button><div class="confirm-actions"><button id="closeProfileBtn" class="secondary-btn">Kapat</button><button id="saveProfileBtn" class="place-btn small">Kaydet</button></div></div>
     </div>
   </div>
 
+
+  <div class="team-center-modal hidden" id="teamCenterModal">
+    <div class="team-center-card">
+      <div class="team-center-head"><div><div class="modal-kicker">FANDOM OPERASYON MERKEZİ</div><h2 id="teamCenterTitle">Takım Merkezi</h2><p id="teamCenterSubtitle">Hedefini koordine et, artwork'ünü koru ve riskli cepheleri izle.</p></div><button id="closeTeamCenterBtn" aria-label="Kapat">×</button></div>
+      <div class="team-center-rolebar"><div><small>FANDOM ROLÜN</small><strong id="teamCenterRole">ÇAYLAK</strong></div><div><small>AKTİF HEDEF</small><strong id="teamCenterTarget">Henüz hedef yok</strong></div><button id="goTeamTargetBtn" class="place-btn small" disabled>HEDEFE GİT</button></div>
+      <div class="team-center-grid">
+        <section class="team-center-section"><div class="section-head"><div><small>TAKIM KOORDİNASYONU</small><h3>Aktif cephe</h3></div><span id="coordinationPermission" class="role-chip">OKUMA</span></div><div id="teamThreats" class="team-threats"><div class="log-empty">Veriler yükleniyor…</div></div><div class="coordinate-editor hidden" id="coordinateEditor"><select id="targetProvinceSelect"></select><input id="targetMessageInput" maxlength="180" placeholder="Kısa takım mesajı (opsiyonel)" /><button id="setTeamTargetBtn" class="place-btn small">HEDEFİ GÜNCELLE</button></div></section>
+        <section class="team-center-section"><div class="section-head"><div><small>ARTWORK KORUMA</small><h3>Takım şablonları</h3></div><span class="role-chip" id="artworkCountBadge">0 ŞABLON</span></div><div id="artworkTemplates" class="artwork-templates"><div class="log-empty">Şablonlar yükleniyor…</div></div><div class="artwork-create hidden" id="artworkCreateBox"><input id="artworkNameInput" maxlength="48" placeholder="Örn. CRUSH İstanbul Logo" /><select id="artworkSizeSelect"><option value="24">24 × 24</option><option value="32">32 × 32</option><option value="40">40 × 40</option><option value="48">48 × 48</option></select><button id="createArtworkBtn" class="place-btn small">SEÇİLİ PİKSEL ETRAFINI ŞABLON YAP</button><small>Stratejist/Komutan: önce haritada artwork'ün merkezinden bir piksel seç.</small></div></section>
+      </div>
+    </div>
+  </div>
+
+  <div class="notifications-modal hidden" id="notificationsModal">
+    <div class="notifications-card">
+      <div class="team-center-head"><div><div class="modal-kicker">CANLI BİLDİRİMLER</div><h2>Bildirim merkezi</h2><p>Takım hedefleri, artwork ve hakimiyet değişimleri.</p></div><button id="closeNotificationsBtn" aria-label="Kapat">×</button></div>
+      <div class="notifications-actions"><button class="secondary-btn" id="markNotificationsReadBtn">TÜMÜNÜ OKUNDU YAP</button></div>
+      <div class="notifications-list" id="notificationsList"><div class="log-empty">Bildirimler yükleniyor…</div></div>
+    </div>
+  </div>
 
   <div class="auth-modal hidden" id="authModal">
     <div class="auth-modal-card">

@@ -713,6 +713,7 @@ async function confirmTeamLock() {
   defenseLayerTeamId = null;
   document.getElementById("teamLockModal")?.classList.add("hidden");
   renderTeams(); renderProgression(); renderProvinceSpotlight(hoveredProvinceName);
+  await loadV16Systems();
   if (viewMode === "defense") rebuildDefenseLayer();
   scheduleDraw();
   showToast(`${selectedTeam.name} takımına katıldın. Takımın sezon sonuna kadar kilitlendi.`);
@@ -1116,6 +1117,7 @@ document.getElementById("confirmPlaceBtn").onclick = async () => {
       localStorage.setItem(COOLDOWN_STORAGE_KEY, String(cooldownEnd));
       scheduleBattleStateReload();
       await loadServerProfileOverview();
+      await loadMyFandomRole();
     }
   } else {
     applyLocalPlacement(x, y, selectedTeam.id, selectedColor, true);
@@ -1230,6 +1232,7 @@ document.querySelectorAll(".nav-link").forEach(btn => btn.addEventListener("clic
   const target = btn.dataset.target;
   if (target === "regions") document.querySelector(".region-board")?.scrollIntoView({ behavior: "smooth", block: "start" });
   else if (target === "ranking") document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  else if (target === "teamcenter") openTeamCenter();
   else if (target === "seasons") openSeasonArchive();
   else if (target === "guide") openGuide();
   else if (target !== "map") showToast(`${btn.textContent.trim()} bölümü hazırlanıyor.`);
@@ -1602,6 +1605,7 @@ async function hydrateAccountFromSupabase() {
     savePlayerProfile();
   }
   await loadServerProfileOverview();
+  await loadV16Systems();
   renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI(); await updateAdminPanelVisibility();
   if (mapReady) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); await refreshLiveStats(); } else remoteSyncPending = true;
 }
@@ -1778,6 +1782,9 @@ async function initAccountLayer() {
       await heartbeatPresence();
     } else {
       lockedTeamId = null; selectedTeam = null; serverProfileOverview = null;
+      v16Role = null; v16TeamCenter = null; v16Artworks = []; v16Notifications = [];
+      if (v16NotificationChannel) { try { await supabaseClient.removeChannel(v16NotificationChannel); } catch (_) {} v16NotificationChannel = null; }
+      renderV16Mini(); updateNotificationBadge();
       document.getElementById("adminPanelBtn")?.classList.add("hidden");
       clearInterval(presenceTimer);
       renderAll();
@@ -1808,6 +1815,248 @@ document.getElementById("signUpBtn")?.addEventListener("click", async () => {
   else { setAuthStatus("Hesap oluşturuldu ve giriş yapıldı.","ok"); document.getElementById("authModal").classList.add("hidden"); }
 });
 
+
+
+// =========================================================
+// V16 · FANDOM SYSTEMS
+// Artwork protection, roles, coordination and notifications
+// =========================================================
+let v16Role = null;
+let v16TeamCenter = null;
+let v16Artworks = [];
+let v16ArtworkCells = new Map();
+let v16ArtworkCursor = new Map();
+let v16Notifications = [];
+let v16NotificationChannel = null;
+
+function roleLabelFallback(roleId) {
+  return ({commander:"KOMUTAN",strategist:"STRATEJİST",artist:"SANATÇI",defender:"SAVUNMACI",raider:"AKINCI",supporter:"DESTEKÇİ",rookie:"ÇAYLAK"})[roleId] || "ÇAYLAK";
+}
+
+async function loadMyFandomRole() {
+  if (!SUPABASE_ENABLED || !supabaseClient || !authUser || !selectedTeam) { v16Role = null; renderV16Mini(); return; }
+  const { data, error } = await supabaseClient.rpc("fanverse_my_role", { p_event_slug: EVENT_SLUG });
+  if (error) { console.warn("V16 role unavailable", error); return; }
+  v16Role = Array.isArray(data) ? data[0] : data;
+  renderV16Mini();
+}
+
+function renderV16Mini() {
+  const role = v16Role?.role_label || (authUser && selectedTeam ? "ÇAYLAK" : "GİRİŞ GEREKLİ");
+  const rb = document.getElementById("teamRoleBadge"); if (rb) rb.textContent = role;
+  const mr = document.getElementById("modalRole"); if (mr) mr.textContent = role;
+  const mini = document.getElementById("teamTargetMini");
+  if (!mini) return;
+  if (!authUser || !selectedTeam) { mini.innerHTML = `<div class="log-empty">Takım hedefi ve artwork savunması için giriş yap.</div>`; return; }
+  const target = v16TeamCenter?.target;
+  if (target?.province_name) mini.innerHTML = `<div class="team-target-line"><strong>🎯 ${target.province_name}</strong><small>${target.message || "Aktif takım hedefi"}</small></div>`;
+  else mini.innerHTML = `<div class="team-target-line"><strong>🎯 Hedef yok</strong><small>${selectedTeam.name} stratejistleri henüz hedef belirlemedi.</small></div>`;
+}
+
+async function loadTeamCenterData() {
+  if (!SUPABASE_ENABLED || !supabaseClient || !authUser || !selectedTeam) { v16TeamCenter = null; renderV16Mini(); return; }
+  const { data, error } = await supabaseClient.rpc("team_center_overview", { p_event_slug: EVENT_SLUG });
+  if (error) { console.warn("V16 team center unavailable", error); return; }
+  v16TeamCenter = data || null;
+  if (v16TeamCenter) {
+    v16Role = {
+      role_id: v16TeamCenter.role_id,
+      role_label: v16TeamCenter.role_label || roleLabelFallback(v16TeamCenter.role_id),
+      can_coordinate: Boolean(v16TeamCenter.can_coordinate),
+      artwork_repairs: v16Role?.artwork_repairs || 0
+    };
+  }
+  renderV16Mini();
+}
+
+function populateTargetProvinceSelect() {
+  const select = document.getElementById("targetProvinceSelect"); if (!select) return;
+  select.innerHTML = allProvinceNames.slice().sort((a,b)=>a.localeCompare(b,"tr")).map(n=>`<option value="${n}">${n}</option>`).join("");
+  if (v16TeamCenter?.target?.province_name) select.value = v16TeamCenter.target.province_name;
+  else if (hoveredProvinceName && allProvinceNames.includes(hoveredProvinceName)) select.value = hoveredProvinceName;
+}
+
+function provinceThreatColor(pct) {
+  if (pct >= 90) return "#4ce3a4";
+  if (pct >= 60) return "#ffcf42";
+  return "#ff4b6e";
+}
+
+function goToProvince(name) {
+  const f = provinceByName.get(name); if (!f?._centroid) { showToast("İl koordinatı bulunamadı."); return; }
+  selectedPixel = { x: Math.round(f._centroid.x), y: Math.round(f._centroid.y) };
+  centerCameraOnPixel(f._centroid.x, f._centroid.y, Math.max(camera.zoom, 7));
+  hoveredProvinceName = name;
+  renderProvinceSpotlight(name); scheduleDraw();
+}
+
+function renderTeamCenterModal() {
+  const modal = document.getElementById("teamCenterModal"); if (!modal) return;
+  const roleLabel = v16Role?.role_label || v16TeamCenter?.role_label || "ÇAYLAK";
+  const canCoordinate = Boolean(v16Role?.can_coordinate ?? v16TeamCenter?.can_coordinate);
+  const title = document.getElementById("teamCenterTitle"); if (title) title.textContent = `${selectedTeam?.name || "Fandom"} Savaş Merkezi`;
+  const role = document.getElementById("teamCenterRole"); if (role) role.textContent = roleLabel;
+  const target = v16TeamCenter?.target;
+  const targetEl = document.getElementById("teamCenterTarget"); if (targetEl) targetEl.textContent = target?.province_name || "Henüz hedef yok";
+  const goBtn = document.getElementById("goTeamTargetBtn"); if (goBtn) goBtn.disabled = !target?.province_name;
+  const perm = document.getElementById("coordinationPermission"); if (perm) perm.textContent = canCoordinate ? "HEDEF YÖNETEBİLİR" : "OKUMA";
+  document.getElementById("coordinateEditor")?.classList.toggle("hidden", !canCoordinate);
+  document.getElementById("artworkCreateBox")?.classList.toggle("hidden", !canCoordinate);
+  populateTargetProvinceSelect();
+  const msg = document.getElementById("targetMessageInput"); if (msg) msg.value = target?.message || "";
+
+  const threats = document.getElementById("teamThreats");
+  const rows = Array.isArray(v16TeamCenter?.threats) ? v16TeamCenter.threats : [];
+  if (threats) threats.innerHTML = rows.length ? rows.map(t => {
+    const pct = Number(t.own_pct || 0); const foreign = Number(t.foreign_pixels || 0);
+    return `<div class="threat-row" data-province="${t.province_name}"><div><strong>${t.province_name}</strong><span>${foreign.toLocaleString("tr-TR")} yabancı piksel</span></div><strong>%${pct.toFixed(1)}</strong><div class="threat-bar"><i style="width:${Math.max(2,Math.min(100,pct))}%;background:${provinceThreatColor(pct)}"></i></div></div>`;
+  }).join("") : `<div class="log-empty">Takımının aktif olduğu bir cephe henüz görünmüyor.</div>`;
+  threats?.querySelectorAll(".threat-row").forEach(el => el.addEventListener("click", () => { closeTeamCenter(); goToProvince(el.dataset.province); }));
+  renderArtworkTemplates();
+}
+
+async function loadTeamArtworks() {
+  v16Artworks = []; v16ArtworkCells = new Map();
+  if (!SUPABASE_ENABLED || !supabaseClient || !authUser || !activeEvent || !selectedTeam) return;
+  const { data, error } = await supabaseClient.from("artwork_templates")
+    .select("id,name,province_name,x1,y1,x2,y2,status,created_at")
+    .eq("event_id",activeEvent.id).eq("team_id",selectedTeam.id).eq("status","active").order("created_at",{ascending:false}).limit(12);
+  if (error) { console.warn("V16 artwork templates unavailable", error); return; }
+  v16Artworks = data || [];
+  const ids = v16Artworks.map(x=>x.id);
+  if (ids.length) {
+    const { data: cells, error: cellsError } = await supabaseClient.from("artwork_template_cells").select("template_id,x,y,expected_color").in("template_id",ids);
+    if (!cellsError) for (const c of cells || []) { if (!v16ArtworkCells.has(c.template_id)) v16ArtworkCells.set(c.template_id,[]); v16ArtworkCells.get(c.template_id).push(c); }
+  }
+  renderArtworkTemplates();
+}
+
+function artworkHealth(template) {
+  const cells = v16ArtworkCells.get(template.id) || [];
+  let good = 0, broken = 0, foreign = 0;
+  for (const c of cells) {
+    const colorOk = String(materialColorAt(Number(c.x),Number(c.y))).toLowerCase() === String(c.expected_color).toLowerCase();
+    const ownerOk = ownerAt(Number(c.x),Number(c.y)) === selectedTeam?.id;
+    if (colorOk && ownerOk) good++; else broken++;
+    if (!ownerOk) foreign++;
+  }
+  return { total:cells.length, good, broken, foreign, integrity:cells.length ? good/cells.length*100 : 0 };
+}
+
+function renderArtworkTemplates() {
+  const wrap = document.getElementById("artworkTemplates"); if (!wrap) return;
+  const badge = document.getElementById("artworkCountBadge"); if (badge) badge.textContent = `${v16Artworks.length} ŞABLON`;
+  if (!v16Artworks.length) { wrap.innerHTML = `<div class="log-empty">Takımın için aktif artwork şablonu yok. Stratejist veya Komutan mevcut artwork alanını kaydedebilir.</div>`; return; }
+  wrap.innerHTML = v16Artworks.map(t => {
+    const h = artworkHealth(t);
+    return `<div class="artwork-card"><div class="artwork-card-head"><div><h4>${escapeHtml(t.name)}</h4><small>${t.province_name} · ${h.total.toLocaleString("tr-TR")} piksel</small></div><strong>%${h.integrity.toFixed(1)}</strong></div><div class="artwork-health"><div><span>BÜTÜNLÜK</span><strong>%${h.integrity.toFixed(1)}</strong></div><div><span>BOZUK</span><strong>${h.broken.toLocaleString("tr-TR")}</strong></div><div><span>YABANCI</span><strong>${h.foreign.toLocaleString("tr-TR")}</strong></div></div><div class="artwork-actions"><button data-repair="${t.id}">BOZUK PİKSELE GİT</button><button data-center="${t.id}">ALANI GÖSTER</button></div></div>`;
+  }).join("");
+  wrap.querySelectorAll("[data-repair]").forEach(btn => btn.addEventListener("click",()=>focusNextArtworkDamage(btn.dataset.repair)));
+  wrap.querySelectorAll("[data-center]").forEach(btn => btn.addEventListener("click",()=>{
+    const t=v16Artworks.find(x=>x.id===btn.dataset.center); if(!t)return; closeTeamCenter(); centerCameraOnPixel((t.x1+t.x2)/2,(t.y1+t.y2)/2,Math.max(camera.zoom,12));
+  }));
+}
+
+function escapeHtml(value="") { return String(value).replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]); }
+
+function focusNextArtworkDamage(templateId) {
+  const t = v16Artworks.find(x=>x.id===templateId); const cells = v16ArtworkCells.get(templateId)||[];
+  if (!t || !cells.length) return;
+  let start = v16ArtworkCursor.get(templateId) || 0;
+  for (let pass=0; pass<2; pass++) {
+    for (let j=pass?0:start; j<(pass?start:cells.length); j++) {
+      const c=cells[j], x=Number(c.x), y=Number(c.y);
+      const damaged = String(materialColorAt(x,y)).toLowerCase()!==String(c.expected_color).toLowerCase() || ownerAt(x,y)!==selectedTeam.id;
+      if (!damaged) continue;
+      v16ArtworkCursor.set(templateId,j+1); selectedPixel={x,y}; selectedColor=String(c.expected_color).toLowerCase();
+      const paletteMatch = paletteColors.findIndex(v=>String(v).toLowerCase()===selectedColor);
+      document.querySelectorAll(".color-btn").forEach((b,k)=>b.classList.toggle("active",k===paletteMatch));
+      closeTeamCenter(); centerCameraOnPixel(x,y,Math.max(camera.zoom,18)); renderPixelInspector(x,y); scheduleDraw();
+      showToast(`${t.name}: onarılacak piksele gidildi · hedef renk ${selectedColor}`); return;
+    }
+  }
+  showToast(`${t.name} şu anda %100 sağlam.`);
+}
+
+async function createArtworkFromSelection() {
+  if (!v16Role?.can_coordinate) { showToast("Artwork şablonu için Stratejist veya Komutan rolü gerekir."); return; }
+  if (!selectedPixel) { showToast("Önce haritada artwork'ün merkezinden bir piksel seç."); return; }
+  const province = provinceAt(selectedPixel.x,selectedPixel.y); if (!province) return;
+  const name=(document.getElementById("artworkNameInput")?.value||"").trim(); if(name.length<2){showToast("Artwork için bir isim yaz.");return;}
+  const size=Math.min(48,Math.max(8,Number(document.getElementById("artworkSizeSelect")?.value||24)));
+  let x1=Math.max(0,Math.round(selectedPixel.x-size/2)), y1=Math.max(0,Math.round(selectedPixel.y-size/2));
+  let x2=Math.min(WORLD_WIDTH-1,x1+size-1), y2=Math.min(WORLD_HEIGHT-1,y1+size-1);
+  const cells=[];
+  for(let y=y1;y<=y2;y++) for(let x=x1;x<=x2;x++) {
+    if(provinceAt(x,y)!==province || ownerAt(x,y)!==selectedTeam.id) continue;
+    const color=String(materialColorAt(x,y)).toLowerCase(); if(/^#[0-9a-f]{6}$/.test(color)) cells.push({x,y,color});
+  }
+  if(!cells.length){showToast("Seçilen alanda takımına ait piksel bulunamadı.");return;}
+  const btn=document.getElementById("createArtworkBtn"); if(btn){btn.disabled=true;btn.textContent="KAYDEDİLİYOR…";}
+  const { data,error }=await supabaseClient.rpc("create_artwork_template",{p_event_slug:EVENT_SLUG,p_name:name,p_province_name:province,p_x1:x1,p_y1:y1,p_x2:x2,p_y2:y2,p_cells:cells});
+  if(btn){btn.disabled=false;btn.textContent="SEÇİLİ PİKSEL ETRAFINI ŞABLON YAP";}
+  if(error){showToast(error.message.includes("ROLE_REQUIRED")?"Bu işlem için Stratejist/Komutan rolü gerekir.":`Artwork kaydedilemedi: ${error.message}`);return;}
+  document.getElementById("artworkNameInput").value=""; await loadTeamArtworks(); await loadNotifications(); showToast(`Artwork şablonu kaydedildi · ${cells.length.toLocaleString("tr-TR")} piksel`);
+}
+
+async function setTeamTargetFromUI() {
+  if (!v16Role?.can_coordinate) { showToast("Takım hedefini yalnız Stratejist veya Komutan değiştirebilir."); return; }
+  const province=document.getElementById("targetProvinceSelect")?.value; const message=document.getElementById("targetMessageInput")?.value||"";
+  const { error }=await supabaseClient.rpc("set_team_target",{p_event_slug:EVENT_SLUG,p_province_name:province,p_message:message});
+  if(error){showToast(`Hedef güncellenemedi: ${error.message}`);return;}
+  await loadTeamCenterData(); renderTeamCenterModal(); await loadNotifications(); showToast(`${province} takım hedefi olarak belirlendi.`);
+}
+
+async function openTeamCenter() {
+  if (!authUser || !selectedTeam) { showToast("Takım merkezi için giriş yapıp fandom seçmelisin."); if(!authUser) openAuthModal(); return; }
+  document.getElementById("teamCenterModal")?.classList.remove("hidden");
+  await Promise.all([loadMyFandomRole(),loadTeamCenterData(),loadTeamArtworks()]);
+  renderTeamCenterModal();
+}
+function closeTeamCenter(){document.getElementById("teamCenterModal")?.classList.add("hidden");}
+
+async function loadNotifications() {
+  if (!SUPABASE_ENABLED || !supabaseClient || !authUser || !activeEvent) { v16Notifications=[]; updateNotificationBadge(); return; }
+  const { data,error }=await supabaseClient.from("user_notifications").select("id,notification_type,title,body,metadata,read_at,created_at").eq("event_id",activeEvent.id).order("created_at",{ascending:false}).limit(40);
+  if(error){console.warn("V16 notifications unavailable",error);return;}
+  v16Notifications=data||[]; updateNotificationBadge(); renderNotifications();
+}
+function updateNotificationBadge(){
+  const btn=document.getElementById("notificationBtn"), badge=document.getElementById("notificationBadge");
+  if(btn) btn.classList.toggle("hidden",!authUser);
+  const unread=v16Notifications.filter(n=>!n.read_at).length;
+  if(badge){badge.textContent=unread>99?"99+":String(unread);badge.classList.toggle("hidden",!unread);}
+}
+function timeAgo(iso){const ms=Date.now()-new Date(iso).getTime();const m=Math.max(0,Math.floor(ms/60000));if(m<1)return"şimdi";if(m<60)return`${m} dk`;const h=Math.floor(m/60);if(h<24)return`${h} sa`;return`${Math.floor(h/24)} gün`;}
+function renderNotifications(){const wrap=document.getElementById("notificationsList");if(!wrap)return;if(!v16Notifications.length){wrap.innerHTML=`<div class="log-empty">Henüz bildirimin yok.</div>`;return;}wrap.innerHTML=v16Notifications.map(n=>`<div class="notification-item ${n.read_at?"":"unread"}"><i></i><div><strong>${escapeHtml(n.title)}</strong><p>${escapeHtml(n.body)}</p></div><time>${timeAgo(n.created_at)}</time></div>`).join("");}
+async function openNotifications(){if(!authUser){openAuthModal();return;}document.getElementById("notificationsModal")?.classList.remove("hidden");await loadNotifications();}
+function closeNotifications(){document.getElementById("notificationsModal")?.classList.add("hidden");}
+async function markNotificationsRead(){if(!authUser)return;const {error}=await supabaseClient.rpc("mark_notifications_read",{p_event_slug:EVENT_SLUG});if(error){showToast(`Bildirimler güncellenemedi: ${error.message}`);return;}await loadNotifications();}
+function subscribeV16Notifications(){
+  if(!SUPABASE_ENABLED||!supabaseClient||!authUser||!activeEvent)return;
+  if(v16NotificationChannel){try{supabaseClient.removeChannel(v16NotificationChannel);}catch(_){}}
+  v16NotificationChannel=supabaseClient.channel(`v16-notifications-${authUser.id}`)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"user_notifications",filter:`user_id=eq.${authUser.id}`},payload=>{
+      const n=payload.new;if(n){v16Notifications.unshift(n);v16Notifications=v16Notifications.slice(0,40);updateNotificationBadge();renderNotifications();showToast(n.title||"Yeni bildirim");}
+    }).subscribe();
+}
+async function loadV16Systems(){
+  if(!authUser||!selectedTeam)return;
+  await Promise.all([loadMyFandomRole(),loadTeamCenterData(),loadTeamArtworks(),loadNotifications()]);
+  subscribeV16Notifications(); renderV16Mini();
+}
+
+// V16 UI hooks
+document.getElementById("openTeamCenterBtn")?.addEventListener("click",openTeamCenter);
+document.getElementById("closeTeamCenterBtn")?.addEventListener("click",closeTeamCenter);
+document.getElementById("teamCenterModal")?.addEventListener("click",e=>{if(e.target.id==="teamCenterModal")closeTeamCenter();});
+document.getElementById("goTeamTargetBtn")?.addEventListener("click",()=>{const p=v16TeamCenter?.target?.province_name;if(p){closeTeamCenter();goToProvince(p);}});
+document.getElementById("setTeamTargetBtn")?.addEventListener("click",setTeamTargetFromUI);
+document.getElementById("createArtworkBtn")?.addEventListener("click",createArtworkFromSelection);
+document.getElementById("notificationBtn")?.addEventListener("click",openNotifications);
+document.getElementById("closeNotificationsBtn")?.addEventListener("click",closeNotifications);
+document.getElementById("notificationsModal")?.addEventListener("click",e=>{if(e.target.id==="notificationsModal")closeNotifications();});
+document.getElementById("markNotificationsReadBtn")?.addEventListener("click",markNotificationsRead);
 
 document.getElementById("logoutBtn")?.addEventListener("click", signOutFanverse);
 document.getElementById("welcomeLoginBtn")?.addEventListener("click", () => { hideWelcome(); openAuthModal(); document.getElementById("authEmail")?.focus(); });
