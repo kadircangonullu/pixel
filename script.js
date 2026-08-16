@@ -12,6 +12,8 @@ const SUPABASE_ENABLED = Boolean(
 let supabaseClient = null;
 let authUser = null;
 let activeEvent = null;
+let seasonResultShown = false;
+let seasonUiTimer = null;
 let realtimePixelChannel = null;
 let remotePixelsLoaded = false;
 let remoteSyncPending = false;
@@ -660,6 +662,7 @@ function openTeamOnboarding(teamId=null) {
 }
 
 async function confirmTeamLock() {
+  if (!isEventPlayable()) { showToast("Bu etkinlik şu anda takım seçimine açık değil."); return; }
   if (!onboardingCandidateId || lockedTeamId) return;
   const team = teamById(onboardingCandidateId);
   if (!team) return;
@@ -1025,6 +1028,7 @@ document.getElementById("resetViewBtn").onclick = resetViewToTurkey;
 const modal = document.getElementById("confirmModal"), preview = document.getElementById("confirmPreview"), confirmText = document.getElementById("confirmText"), confirmMeta = document.getElementById("confirmMeta"), placeBtn = document.getElementById("placePixelBtn");
 placeBtn.onclick = () => {
   if (!mapReady) return;
+  if (!isEventPlayable()) { showToast(effectiveEventState() === "finished" ? "Sezon sona erdi; harita artık salt okunur." : "Etkinlik henüz başlamadı."); return; }
   if (Date.now() < cooldownEnd) return;
   if (!selectedTeam) { showToast("Önce bir fandom seçmelisin."); return; }
   if (!selectedPixel) { showToast("Türkiye haritasından bir piksel seçmelisin."); return; }
@@ -1036,6 +1040,7 @@ placeBtn.onclick = () => {
 document.getElementById("cancelPlaceBtn").onclick = () => modal.classList.add("hidden");
 document.getElementById("confirmPlaceBtn").onclick = async () => {
   if (!selectedPixel || !selectedTeam || !mapReady) return;
+  if (!isEventPlayable()) { modal.classList.add("hidden"); updateSeasonUI(); showToast("Etkinlik piksel yerleştirmeye kapalı."); return; }
   const { x, y } = selectedPixel, provinceName = provinceAt(x, y);
 
   if (SUPABASE_ENABLED) {
@@ -1164,6 +1169,7 @@ document.querySelectorAll(".nav-link").forEach(btn => btn.addEventListener("clic
   const target = btn.dataset.target;
   if (target === "regions") document.querySelector(".region-board")?.scrollIntoView({ behavior: "smooth", block: "start" });
   else if (target === "ranking") document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  else if (target === "seasons") openSeasonArchive();
   else if (target !== "map") showToast(`${btn.textContent.trim()} bölümü sonraki modülde genişletilecek.`);
 }));
 
@@ -1209,6 +1215,123 @@ document.getElementById("profileModal")?.addEventListener("click",e=>{ if(e.targ
 
 function renderAll() { renderTeams(); renderRegionBoard(); renderLeaderboard(); renderProvinceSpotlight(hoveredProvinceName); renderAttackCenter(); updateGlobalStats(); renderProgression(); }
 
+
+// V10 — season lifecycle / archive / result screen
+function effectiveEventState(event = activeEvent) {
+  if (!event) return SUPABASE_ENABLED ? "loading" : "active";
+  const now = Date.now();
+  const starts = event.starts_at ? new Date(event.starts_at).getTime() : -Infinity;
+  const ends = event.ends_at ? new Date(event.ends_at).getTime() : Infinity;
+  if (event.status === "finished" || now >= ends) return "finished";
+  if (event.status === "draft" || now < starts) return "waiting";
+  return "active";
+}
+function isEventPlayable() {
+  return effectiveEventState() === "active";
+}
+function formatSeasonRemaining(ms) {
+  if (ms <= 0) return "00g 00s 00d";
+  const total = Math.floor(ms / 1000);
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  return `${String(days).padStart(2,"0")}g ${String(hours).padStart(2,"0")}s ${String(mins).padStart(2,"0")}d`;
+}
+function formatEventDate(value) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("tr-TR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" }).format(new Date(value));
+}
+function setEventEndedOverlay(show) {
+  const wrapper = document.querySelector(".canvas-wrapper");
+  if (!wrapper) return;
+  let overlay = document.getElementById("eventEndedOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "eventEndedOverlay";
+    overlay.className = "event-ended-overlay hidden";
+    overlay.innerHTML = `<div>SEZON TAMAMLANDI · HARİTA İNCELEME MODU</div>`;
+    wrapper.appendChild(overlay);
+  }
+  overlay.classList.toggle("hidden", !show);
+}
+function ownershipStandings() {
+  const counts = Object.fromEntries(teams.map(t => [t.id, 0]));
+  for (let i = 0; i < ownerGrid.length; i++) {
+    const ownerIndex = ownerGrid[i];
+    if (!ownerIndex) continue;
+    const id = teamIdByIndex[ownerIndex];
+    if (id) counts[id]++;
+  }
+  return teams.map(team => ({ team, pixels: counts[team.id] || 0 }))
+    .sort((a,b) => b.pixels - a.pixels || b.team.capturedProvinces - a.team.capturedProvinces);
+}
+function showSeasonResult(force = false) {
+  if (!force && seasonResultShown) return;
+  if (effectiveEventState() !== "finished") return;
+  seasonResultShown = true;
+  const standings = ownershipStandings();
+  const winner = standings[0];
+  const title = document.getElementById("seasonResultTitle");
+  const text = document.getElementById("seasonResultText");
+  const podium = document.getElementById("seasonResultPodium");
+  if (winner && title) title.textContent = `${winner.team.name} SEZON ŞAMPİYONU`;
+  if (text) text.textContent = activeEvent?.name ? `${activeEvent.name} sona erdi. Harita artık salt okunur durumda; sonuçlar mevcut hakimiyet piksellerine göre gösteriliyor.` : "Etkinlik sona erdi. Harita artık salt okunur durumda.";
+  if (podium) podium.innerHTML = standings.slice(0,3).map((entry, i) => `<div class="podium-item"><i style="background:${entry.team.color}"></i><strong>${i+1}. ${entry.team.name}</strong><span>${entry.pixels.toLocaleString("tr-TR")} hakimiyet pikseli · ${entry.team.capturedProvinces} il</span></div>`).join("");
+  document.getElementById("seasonResultModal")?.classList.remove("hidden");
+}
+function updateSeasonUI() {
+  const state = effectiveEventState();
+  const badge = document.getElementById("seasonStatusBadge");
+  const countdown = document.getElementById("seasonCountdown");
+  const range = document.getElementById("seasonDateRange");
+  const eventName = document.getElementById("seasonEventName");
+  const chip = document.getElementById("seasonChip");
+  const place = document.getElementById("placePixelBtn");
+  if (eventName && activeEvent?.name) eventName.textContent = activeEvent.name;
+  if (chip) chip.textContent = `${EVENT_SLUG.toUpperCase().replace("-", " ")} · V10`;
+  if (range && activeEvent) range.textContent = `${formatEventDate(activeEvent.starts_at)} → ${formatEventDate(activeEvent.ends_at)}`;
+  if (badge) {
+    badge.classList.remove("waiting","finished");
+    badge.textContent = state === "active" ? "CANLI" : state === "waiting" ? "YAKINDA" : state === "finished" ? "BİTTİ" : "YÜKLENİYOR";
+    if (state === "waiting") badge.classList.add("waiting");
+    if (state === "finished") badge.classList.add("finished");
+  }
+  if (countdown) {
+    if (!activeEvent) countdown.textContent = SUPABASE_ENABLED ? "—" : "DEMO";
+    else if (state === "waiting") countdown.textContent = `Başlangıç ${formatSeasonRemaining(new Date(activeEvent.starts_at).getTime() - Date.now())}`;
+    else if (state === "active") countdown.textContent = formatSeasonRemaining(new Date(activeEvent.ends_at).getTime() - Date.now());
+    else countdown.textContent = "TAMAMLANDI";
+  }
+  if (place) {
+    const locked = state !== "active";
+    place.disabled = locked;
+    place.classList.toggle("event-locked", locked);
+    if (state === "waiting") place.textContent = "ETKİNLİK HENÜZ BAŞLAMADI";
+    else if (state === "finished") place.textContent = "SEZON TAMAMLANDI";
+    else place.textContent = "PİKSEL YERLEŞTİR";
+  }
+  setEventEndedOverlay(state === "finished");
+  if (state === "finished") showSeasonResult();
+}
+async function openSeasonArchive() {
+  const modal = document.getElementById("seasonModal");
+  const list = document.getElementById("seasonList");
+  if (!modal || !list) return;
+  modal.classList.remove("hidden");
+  if (!SUPABASE_ENABLED || !supabaseClient) {
+    list.innerHTML = `<div class="season-list-item current"><div><strong>${EVENT_SLUG}</strong><small>Demo modunda yalnızca aktif prototip sezonu gösteriliyor.</small></div><span class="season-list-state active">DEMO</span></div>`;
+    return;
+  }
+  list.innerHTML = `<div class="season-list-empty">Sezonlar yükleniyor…</div>`;
+  const { data, error } = await supabaseClient.from("events").select("id,slug,name,starts_at,ends_at,status").order("starts_at", { ascending:false });
+  if (error) { list.innerHTML = `<div class="season-list-empty">Sezon arşivi yüklenemedi: ${error.message}</div>`; return; }
+  list.innerHTML = (data || []).map(ev => {
+    const state = effectiveEventState(ev);
+    const label = state === "active" ? "CANLI" : state === "waiting" ? "YAKINDA" : "TAMAMLANDI";
+    return `<div class="season-list-item ${ev.slug === EVENT_SLUG ? "current" : ""}"><div><strong>${ev.name}</strong><small>${formatEventDate(ev.starts_at)} → ${formatEventDate(ev.ends_at)} · ${ev.slug}</small></div><span class="season-list-state ${state}">${label}</span></div>`;
+  }).join("") || `<div class="season-list-empty">Henüz sezon bulunmuyor.</div>`;
+}
+
 // V9 — optional Supabase auth + realtime pixel delta sync
 function setAuthStatus(text, kind="") {
   const el = document.getElementById("authStatus"); if (!el) return; el.textContent = text; el.className = `auth-status ${kind}`;
@@ -1229,8 +1352,9 @@ function openAuthModal() {
 }
 async function hydrateAccountFromSupabase() {
   if (!SUPABASE_ENABLED || !authUser) return;
-  const { data: eventData } = await supabaseClient.from("events").select("id,slug,name,ends_at,status").eq("slug", EVENT_SLUG).maybeSingle();
+  const { data: eventData } = await supabaseClient.from("events").select("id,slug,name,starts_at,ends_at,status").eq("slug", EVENT_SLUG).maybeSingle();
   activeEvent = eventData || null;
+  updateSeasonUI();
   if (!activeEvent) { showToast(`Supabase'te ${EVENT_SLUG} etkinliği bulunamadı.`); return; }
   const { data: membership } = await supabaseClient.from("event_memberships").select("team_id,last_pixel_at").eq("event_id", activeEvent.id).eq("user_id", authUser.id).maybeSingle();
   if (membership?.team_id) {
@@ -1251,7 +1375,7 @@ async function hydrateAccountFromSupabase() {
     player.totalPlaced = Number(profile.total_placed || 0);
     savePlayerProfile();
   }
-  renderAll(); updateCooldown(); updateAuthChip();
+  renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI();
   if (mapReady) await syncRemotePixels(); else remoteSyncPending = true;
 }
 async function syncRemotePixels() {
@@ -1318,5 +1442,10 @@ document.getElementById("signUpBtn")?.addEventListener("click", async () => {
   else { setAuthStatus("Hesap oluşturuldu ve giriş yapıldı.","ok"); document.getElementById("authModal").classList.add("hidden"); }
 });
 
-renderPalette(); renderTeams(); renderLeaderboard(); renderAttackCenter(); renderProgression(); updateCooldown(); requestAnimationFrame(resizeCanvas); loadTurkeyMap(); initAccountLayer();
+document.getElementById("closeSeasonModalBtn")?.addEventListener("click", () => document.getElementById("seasonModal")?.classList.add("hidden"));
+document.getElementById("closeSeasonResultBtn")?.addEventListener("click", () => document.getElementById("seasonResultModal")?.classList.add("hidden"));
+document.getElementById("openArchiveFromResultBtn")?.addEventListener("click", () => { document.getElementById("seasonResultModal")?.classList.add("hidden"); openSeasonArchive(); });
+
+renderPalette(); renderTeams(); renderLeaderboard(); renderAttackCenter(); renderProgression(); updateCooldown(); updateSeasonUI(); requestAnimationFrame(resizeCanvas); loadTurkeyMap(); initAccountLayer();
+seasonUiTimer = setInterval(updateSeasonUI, 1000);
 setInterval(() => { pruneRecentAttacks(); if (recentAttacks.length) { heatmapDirty = true; renderAttackCenter(); scheduleDraw(); } }, 5000);
