@@ -24,6 +24,7 @@ let remotePixelsLoaded = false;
 let remoteSyncPending = false;
 let lockedTeamId = localStorage.getItem(TEAM_LOCK_STORAGE_KEY) || null;
 let onboardingCandidateId = null;
+let serverProfileOverview = null;
 
 const teams = [
   { id: "crush", name: "CRUSH", color: "#ff4b9b", city: "İstanbul", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 },
@@ -1096,6 +1097,7 @@ document.getElementById("confirmPlaceBtn").onclick = async () => {
       cooldownEnd = row.cooldown_until ? new Date(row.cooldown_until).getTime() : Date.now() + COOLDOWN_MS;
       localStorage.setItem(COOLDOWN_STORAGE_KEY, String(cooldownEnd));
       scheduleBattleStateReload();
+      await loadServerProfileOverview();
     }
   } else {
     applyLocalPlacement(x, y, selectedTeam.id, selectedColor, true);
@@ -1136,15 +1138,19 @@ function applyLocalPlacement(x, y, teamId, color, countProgress=false) {
   }
   if (countProgress) {
     todayPixels++;
-    player.totalPlaced = (player.totalPlaced || 0) + 1;
-    awardXp(isDefenseRecapture ? 18 : 10, isDefenseRecapture ? "Savunma hamlesi" : "Piksel yerleştirme");
-    registerDailyActivity("placed", 1);
+    if (SUPABASE_ENABLED) {
+      // V14: XP, görev ve kişisel savaş istatistiklerinin otoritesi PostgreSQL'dir.
+    } else {
+      player.totalPlaced = (player.totalPlaced || 0) + 1;
+      awardXp(isDefenseRecapture ? 18 : 10, isDefenseRecapture ? "Savunma hamlesi" : "Piksel yerleştirme");
+      registerDailyActivity("placed", 1);
     if (isDefenseRecapture) registerDailyActivity("defense", 1);
     if (provinceName && !dailyVisitedProvinces.has(provinceName)) {
       dailyVisitedProvinces.add(provinceName); dailyState.provinces = dailyVisitedProvinces.size;
       saveDailyState(); checkDailyRewards();
     }
-    savePlayerProfile();
+      savePlayerProfile();
+    }
   }
   evaluateProvinceCapture(provinceName);
 }
@@ -1212,6 +1218,20 @@ document.querySelectorAll(".nav-link").forEach(btn => btn.addEventListener("clic
 
 
 function renderProgression() {
+  if (SUPABASE_ENABLED && serverProfileOverview) {
+    player.name = serverProfileOverview.username || player.name;
+    player.xp = Number(serverProfileOverview.xp || 0);
+    player.totalPlaced = Number(serverProfileOverview.total_placed || 0);
+    player.streak = Number(serverProfileOverview.current_streak || 0);
+    dailyState = {
+      ...dailyState,
+      date: todayKey(),
+      placed: Number(serverProfileOverview.today_placed || 0),
+      defense: Number(serverProfileOverview.today_enemy_taken || 0),
+      provinces: Number(serverProfileOverview.today_provinces || 0),
+      claimedRewards: serverProfileOverview.claimed_missions || []
+    };
+  }
   const level = levelFromXp(player.xp);
   const floor = levelFloorXp(level), next = nextLevelXp(level);
   const within = player.xp - floor, span = Math.max(1, next - floor);
@@ -1227,6 +1247,12 @@ function renderProgression() {
   const per=document.getElementById("xpPercent"); if(per) per.textContent=`${pct}%`;
   const fill=document.getElementById("xpFill"); if(fill) fill.style.width=`${pct}%`;
   const streak=document.getElementById("streakBadge"); if(streak) streak.textContent=`${player.streak || 0} GÜN SERİ`;
+  const rankBox=document.getElementById("playerBattleStats");
+  if(rankBox){
+    if(SUPABASE_ENABLED && serverProfileOverview){
+      rankBox.innerHTML=`<div><small>FANDOM SIRASI</small><strong>#${serverProfileOverview.team_rank || "—"}<em> / ${serverProfileOverview.team_members || 0}</em></strong></div><div><small>SEZON PİKSELİ</small><strong>${Number(serverProfileOverview.event_placed||0).toLocaleString("tr-TR")}</strong></div><div><small>GERİ ALINAN</small><strong>${Number(serverProfileOverview.enemy_pixels_taken||0).toLocaleString("tr-TR")}</strong></div><div><small>CEPHE</small><strong>${Number(serverProfileOverview.unique_provinces||0)} il</strong></div>`;
+    } else { rankBox.innerHTML=`<div><small>MOD</small><strong>DEMO</strong></div><div><small>TOPLAM</small><strong>${Number(player.totalPlaced||0).toLocaleString("tr-TR")}</strong></div>`; }
+  }
   const missions=document.getElementById("dailyMissions");
   if (missions) missions.innerHTML = DAILY_MISSIONS.map(m => {
     const val=Math.min(m.target,dailyState[m.id]||0), done=dailyState.claimedRewards.includes(m.id), mp=Math.round(val/m.target*100);
@@ -1240,13 +1266,21 @@ function openProfileModal() {
   document.getElementById("modalXp").textContent=player.xp.toLocaleString("tr-TR");
   document.getElementById("modalPlaced").textContent=(player.totalPlaced||0).toLocaleString("tr-TR");
   document.getElementById("modalStreak").textContent=`${player.streak||0} gün`;
+  const mr=document.getElementById("modalTeamRank"); if(mr) mr.textContent=serverProfileOverview ? `#${serverProfileOverview.team_rank || "—"} / ${serverProfileOverview.team_members || 0}` : "—";
+  const me=document.getElementById("modalEnemyTaken"); if(me) me.textContent=Number(serverProfileOverview?.enemy_pixels_taken||0).toLocaleString("tr-TR");
   modal.classList.remove("hidden");
 }
 document.getElementById("profileOpenBtn")?.addEventListener("click", openProfileModal);
 document.getElementById("closeProfileBtn")?.addEventListener("click",()=>document.getElementById("profileModal").classList.add("hidden"));
-document.getElementById("saveProfileBtn")?.addEventListener("click",()=>{
-  const value=document.getElementById("profileNameInput").value.trim().replace(/\s+/g," ").slice(0,18);
-  player.name=value||"guest"; savePlayerProfile(); renderProgression(); document.getElementById("profileModal").classList.add("hidden"); showToast("Profil kaydedildi.");
+document.getElementById("saveProfileBtn")?.addEventListener("click",async()=>{
+  const value=document.getElementById("profileNameInput").value.trim().replace(/\s+/g," ").slice(0,18) || "guest";
+  if (SUPABASE_ENABLED && authUser) {
+    const { error } = await supabaseClient.from("profiles").update({ username:value }).eq("id",authUser.id);
+    if (error) { showToast(`Profil kaydedilemedi: ${error.message}`); return; }
+  }
+  player.name=value; savePlayerProfile();
+  if (SUPABASE_ENABLED) await loadServerProfileOverview();
+  renderProgression(); document.getElementById("profileModal").classList.add("hidden"); showToast("Profil kaydedildi.");
 });
 document.getElementById("profileModal")?.addEventListener("click",e=>{ if(e.target.id==="profileModal") e.currentTarget.classList.add("hidden"); });
 
@@ -1503,6 +1537,21 @@ function openAuthModal() {
   setAuthStatus(SUPABASE_ENABLED ? "" : "Şu anda local demo modu aktif.");
   modalEl.classList.remove("hidden");
 }
+async function loadServerProfileOverview() {
+  if (!SUPABASE_ENABLED || !authUser || !supabaseClient) return;
+  const { data, error } = await supabaseClient.rpc("profile_progress_overview", { p_event_slug: EVENT_SLUG });
+  if (error) { console.warn("V14 profile overview unavailable", error); return; }
+  serverProfileOverview = Array.isArray(data) ? data[0] : data;
+  if (serverProfileOverview) {
+    player.name = serverProfileOverview.username || player.name;
+    player.xp = Number(serverProfileOverview.xp || 0);
+    player.totalPlaced = Number(serverProfileOverview.total_placed || 0);
+    player.streak = Number(serverProfileOverview.current_streak || 0);
+    savePlayerProfile();
+  }
+  renderProgression();
+}
+
 async function hydrateAccountFromSupabase() {
   if (!SUPABASE_ENABLED || !authUser) return;
   const { data: eventData } = await supabaseClient.from("events").select("id,slug,name,starts_at,ends_at,status").eq("slug", EVENT_SLUG).maybeSingle();
@@ -1528,6 +1577,7 @@ async function hydrateAccountFromSupabase() {
     player.totalPlaced = Number(profile.total_placed || 0);
     savePlayerProfile();
   }
+  await loadServerProfileOverview();
   renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI(); await updateAdminPanelVisibility();
   if (mapReady) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); } else remoteSyncPending = true;
 }

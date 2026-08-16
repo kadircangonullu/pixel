@@ -106,6 +106,7 @@
               <strong class="level-pill" id="levelPill">LV 1</strong>
             </div>
             <div class="xp-line"><div class="xp-line-head"><span id="xpLabel">0 / 250 XP</span><span id="xpPercent">0%</span></div><div class="xp-track"><div id="xpFill"></div></div></div>
+            <div class="player-battle-stats" id="playerBattleStats"><div><small>MOD</small><strong>DEMO</strong></div></div>
             <div class="daily-title">GÜNLÜK GÖREVLER <span id="dailyResetText">bugün</span></div>
             <div class="daily-missions" id="dailyMissions"></div>
           </section>
@@ -160,13 +161,15 @@
     <div class="profile-modal-card">
       <div class="modal-kicker">FANVERSE PROFİLİ</div>
       <h3>Oyuncu profilin</h3>
-      <p>V13, Supabase yapılandırıldığında gerçek hesaba bağlanır. Yapılandırma yoksa tarayıcıda demo profil ve kilitli fandom ile çalışır.</p>
+      <p>V14, Supabase yapılandırıldığında XP, görevler ve kişisel savaş istatistiklerini sunucudan okur. Yapılandırma yoksa tarayıcıda demo profil ve kilitli fandom ile çalışır.</p>
       <label class="profile-field"><span>KULLANICI ADI</span><input id="profileNameInput" maxlength="18" placeholder="guest" /></label>
       <div class="profile-modal-stats">
         <div><small>SEVİYE</small><strong id="modalLevel">1</strong></div>
         <div><small>TOPLAM XP</small><strong id="modalXp">0</strong></div>
         <div><small>YERLEŞTİRİLEN</small><strong id="modalPlaced">0</strong></div>
         <div><small>SERİ</small><strong id="modalStreak">0 gün</strong></div>
+        <div><small>FANDOM SIRASI</small><strong id="modalTeamRank">—</strong></div>
+        <div><small>GERİ ALINAN</small><strong id="modalEnemyTaken">0</strong></div>
       </div>
       <div class="confirm-actions"><button id="closeProfileBtn" class="secondary-btn">Kapat</button><button id="saveProfileBtn" class="place-btn small">Kaydet</button></div>
     </div>
