@@ -9,10 +9,11 @@
 <body>
   <div class="admin-shell">
     <aside class="admin-sidebar">
-      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V11</small></div></div>
+      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V13</small></div></div>
       <nav>
         <button class="admin-nav active" data-tab="dashboard">GENEL BAKIŞ</button>
         <button class="admin-nav" data-tab="seasons">SEZONLAR</button>
+        <button class="admin-nav" data-tab="battlemap">SAVAŞ MOTORU</button>
         <button class="admin-nav" data-tab="players">OYUNCULAR</button>
         <button class="admin-nav" data-tab="pixels">PİKSELLER</button>
         <button class="admin-nav" data-tab="zones">KORUMALI ALANLAR</button>
@@ -66,6 +67,19 @@
               <button id="createSeasonBtn" class="primary">SEZON OLUŞTUR</button>
             </article>
             <article class="panel"><div class="panel-head"><h3>Sezonlar</h3><button id="refreshSeasonsBtn">YENİLE</button></div><div id="seasonAdminList" class="list"></div></article>
+          </div>
+        </section>
+
+        <section class="admin-tab" data-panel="battlemap">
+          <div class="admin-grid two">
+            <article class="panel"><div class="panel-head"><h3>Savaş haritası durumu</h3><button id="refreshBattleMapBtn">YENİLE</button></div>
+              <div class="battle-map-status-grid"><div><small>İLLER</small><strong id="battleProvinceCount">—</strong></div><div><small>RUN</small><strong id="battleRunCount">—</strong></div><div><small>DURUM</small><strong id="battleReadyState">—</strong></div></div>
+              <div class="battle-map-progress"><div id="battleMapProgressFill"></div></div><p class="muted" id="battleMapMessage">Durum okunuyor…</p>
+            </article>
+            <article class="panel"><h3>Haritayı hazırla / yeniden oluştur</h3><p class="muted">Bu işlem gerçek 1440×615 Türkiye rasterını tarayıcıda üretir, 81 il toplamını ve koordinat run'larını Supabase'e gönderir, ardından tüm sezon savaş durumlarını yeniden kurar. Yalnızca gerektiğinde çalıştır.</p>
+              <button id="prepareBattleMapBtn" class="primary">SAVAŞ HARİTASINI HAZIRLA</button>
+              <div class="status" id="battleMapActionStatus"></div>
+            </article>
           </div>
         </section>
 

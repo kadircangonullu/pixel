@@ -18,19 +18,21 @@ let realtimePixelChannel = null;
 let realtimeBattleChannel = null;
 let battleStateReloadTimer = null;
 let battleMapSyncAttempted = false;
+const serverProvinceStats = new Map();
+let battleMapReady = false;
 let remotePixelsLoaded = false;
 let remoteSyncPending = false;
 let lockedTeamId = localStorage.getItem(TEAM_LOCK_STORAGE_KEY) || null;
 let onboardingCandidateId = null;
 
 const teams = [
-  { id: "crush", name: "CRUSH", color: "#ff4b9b", city: "İstanbul", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "manifest", name: "MANIFEST", color: "#4ba8ff", city: "İzmir", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "aura", name: "AURA", color: "#9c6bff", city: "Ankara", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "karm6", name: "KARM6", color: "#ff7b38", city: "Antalya", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "mantra", name: "MANTRA", color: "#ffcf42", city: "Samsun", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "radikal", name: "RADİKAL", color: "#ee4054", city: "Erzurum", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 },
-  { id: "perma", name: "PERMA", color: "#4ce3a4", city: "Gaziantep", points: 0, pixels: 0, capturedProvinces: 0, securedRegions: 0 }
+  { id: "crush", name: "CRUSH", color: "#ff4b9b", city: "İstanbul", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "manifest", name: "MANIFEST", color: "#4ba8ff", city: "İzmir", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "aura", name: "AURA", color: "#9c6bff", city: "Ankara", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "karm6", name: "KARM6", color: "#ff7b38", city: "Antalya", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "mantra", name: "MANTRA", color: "#ffcf42", city: "Samsun", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "radikal", name: "RADİKAL", color: "#ee4054", city: "Erzurum", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 },
+  { id: "perma", name: "PERMA", color: "#4ce3a4", city: "Gaziantep", points: 0, pixels: 0, provinceBonus:0, regionBonus:0, capturedProvinces: 0, securedRegions: 0 }
 ];
 
 const REGION_PROVINCES = {
@@ -844,21 +846,40 @@ function centerCameraOnPixel(x,y,targetZoom=14) {
   clampCamera(); scheduleDraw();
 }
 
+function getBattleStatus(stats) {
+  if (!stats) return { label:"VERİ YOK", cls:"neutral" };
+  if (stats.controlled_by) return { label:"TAM HAKİM", cls:"dominant" };
+  if (!stats.claimed_cells) return { label:"TARAFSIZ", cls:"neutral" };
+  const counts = Object.values(stats.team_counts || {}).map(Number).sort((a,b)=>b-a);
+  const margin = stats.total_cells ? ((counts[0]||0)-(counts[1]||0))/stats.total_cells*100 : 0;
+  if (margin <= 2.5 && stats.claimed_pct >= 10) return { label:"KRİTİK", cls:"critical" };
+  if (margin <= 8 && stats.claimed_pct >= 10) return { label:"ÇEKİŞMELİ", cls:"contested" };
+  if (stats.control_pct >= 75) return { label:"GÜÇLÜ HAKİMİYET", cls:"strong" };
+  return { label:"MÜCADELE", cls:"contested" };
+}
+
 function renderProvinceSpotlight(name) {
   const target = document.getElementById("provinceSpotlight");
   if (!name || !provinceByName.has(name)) { target.innerHTML = `<div class="province-empty">Haritada bir ilin üzerine gel.</div>`; return; }
-  const feature = provinceByName.get(name), stats = getProvinceStats(name), leader = teamById(stats.leaderId), captured = teamById(feature._capturedBy);
+  const feature = provinceByName.get(name);
+  const local = getProvinceStats(name);
+  const server = serverProvinceStats.get(name);
+  const stats = server || { total_cells:local.total, claimed_cells:local.claimed, team_counts:local.counts, leader_team_id:local.leaderId, control_pct:local.control, claimed_pct:local.claimedPct, controlled_by:feature._capturedBy };
+  const leader = teamById(stats.leader_team_id), captured = teamById(stats.controlled_by || feature._capturedBy);
   const color = captured?.color || leader?.color || "#64748b";
-  target.innerHTML = `<div class="province-head"><div><h3>${name}</h3><span>${feature._region}</span></div><span>${feature._home ? "BAŞLANGIÇ KALESİ" : (captured ? "ELE GEÇİRİLDİ" : "SAVAŞ ALANI")}</span></div>
+  const battle = getBattleStatus(stats);
+  const distribution = teams.map(t=>({team:t,count:Number(stats.team_counts?.[t.id]||0)})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+  target.innerHTML = `<div class="province-head"><div><h3>${name}</h3><span>${feature._region}</span></div><span class="battle-state ${battle.cls}">${battle.label}</span></div>
     <div class="province-owner"><i class="dot" style="background:${color}"></i>${captured ? `${captured.name} tam kontrol` : leader ? `${leader.name} önde` : "Henüz tarafsız"}</div>
-    <div class="province-grid"><div class="province-metric"><small>LİDER HAKİMİYETİ</small><strong>%${stats.control.toFixed(1)}</strong></div><div class="province-metric"><small>DOLULUK</small><strong>%${stats.claimedPct.toFixed(1)}</strong></div></div>
-    <div class="province-progress"><div style="width:${stats.control}%;background:${color}"></div></div>
-    ${selectedTeam ? (() => { const own = stats.counts[selectedTeam.id] || 0; const foreign = Math.max(0, stats.claimed - own); const attacks = attacksForProvince(name, selectedTeam.id).length; return `<div class="defense-summary"><span>${selectedTeam.name} savunma taraması</span><strong>${foreign.toLocaleString("tr-TR")} yabancı piksel</strong></div>${foreign ? `<div class="foreign-alert">Bu ilde ${selectedTeam.name} dışındaki fandomlara ait ${foreign.toLocaleString("tr-TR")} piksel var. Son 5 dk savunma kaybı: ${attacks}.</div><div class="province-defense-actions"><button onclick="findNextForeignPixel('${name.replace("'","\'")}')">YABANCI PİKSELE GİT</button><button onclick="setDefenseView()">SAVUNMA GÖRÜNÜMÜ</button></div>` : `<div class="foreign-clean">Bu ilde başka bir fandoma ait yerleştirilmiş piksel görünmüyor.</div>`}`; })() : `<div class="defense-summary"><span>Savunma taraması</span><strong>Fandom seç</strong></div>`}`;
+    <div class="province-grid"><div class="province-metric"><small>LİDER HAKİMİYETİ</small><strong>%${Number(stats.control_pct||0).toFixed(1)}</strong></div><div class="province-metric"><small>DOLULUK</small><strong>%${Number(stats.claimed_pct||0).toFixed(1)}</strong></div></div>
+    <div class="province-progress"><div style="width:${Number(stats.control_pct||0)}%;background:${color}"></div></div>
+    <div class="fandom-distribution">${distribution.length ? distribution.map(({team,count})=>{const pct=stats.total_cells?count/stats.total_cells*100:0;return `<div class="dist-row"><span><i style="background:${team.color}"></i>${team.name}</span><div><b style="width:${Math.max(.5,pct)}%;background:${team.color}"></b></div><strong>${count.toLocaleString("tr-TR")} · %${pct.toFixed(1)}</strong></div>`}).join("") : `<div class="distribution-empty">Henüz sahipli piksel yok.</div>`}</div>
+    ${selectedTeam ? (() => { const own = Number(stats.team_counts?.[selectedTeam.id] || 0); const foreign = Math.max(0, Number(stats.claimed_cells||0) - own); const attacks = attacksForProvince(name, selectedTeam.id).length; return `<div class="defense-summary"><span>${selectedTeam.name} savunma taraması</span><strong>${foreign.toLocaleString("tr-TR")} yabancı piksel</strong></div>${foreign ? `<div class="foreign-alert">Bu ilde ${selectedTeam.name} dışındaki fandomlara ait ${foreign.toLocaleString("tr-TR")} piksel var. Son 5 dk savunma kaybı: ${attacks}.</div><div class="province-defense-actions"><button onclick="findNextForeignPixel('${name.replace("'","\'")}')">YABANCI PİKSELE GİT</button><button onclick="setDefenseView()">SAVUNMA GÖRÜNÜMÜ</button></div>` : `<div class="foreign-clean">Bu ilde başka bir fandoma ait yerleştirilmiş piksel görünmüyor.</div>`}`; })() : `<div class="defense-summary"><span>Savunma taraması</span><strong>Fandom seç</strong></div>`}`;
 }
 
 function renderLeaderboard() {
   const sorted = [...teams].sort((a,b) => b.points - a.points || b.capturedProvinces - a.capturedProvinces || b.pixels - a.pixels);
-  document.getElementById("leaderboard").innerHTML = sorted.map((team, index) => `<div class="leader-row"><span>${index + 1}</span><div class="leader-team"><span class="leader-dot" style="background:${team.color}"></span><span class="leader-team-text">${team.name}</span></div><span class="leader-score"><strong>${team.points.toLocaleString("tr-TR")}</strong><small>${team.capturedProvinces} il · ${team.securedRegions} bölge</small></span></div>`).join("");
+  document.getElementById("leaderboard").innerHTML = sorted.map((team, index) => `<div class="leader-row v13"><span>${index + 1}</span><div class="leader-team"><span class="leader-dot" style="background:${team.color}"></span><span class="leader-team-text">${team.name}</span></div><span class="leader-score"><strong>${team.points.toLocaleString("tr-TR")}</strong><small>${team.pixels.toLocaleString("tr-TR")} px · +${Number(team.provinceBonus||0).toLocaleString("tr-TR")} il · +${Number(team.regionBonus||0).toLocaleString("tr-TR")} bölge</small></span></div>`).join("");
 }
 
 function updateGlobalStats() {
@@ -1378,52 +1399,35 @@ function buildProvinceTotalsPayload() {
 async function ensureServerBattleMap() {
   if (!SUPABASE_ENABLED || !authUser || !mapReady || battleMapSyncAttempted) return;
   battleMapSyncAttempted = true;
-  const { data: isAdmin } = await supabaseClient.rpc("is_admin");
-  const { data: status, error: statusError } = await supabaseClient.rpc("battle_map_status");
-  if (statusError) {
-    console.warn("V12 battle map status unavailable", statusError);
+  const { data: status, error } = await supabaseClient.rpc("battle_map_status");
+  if (error) {
+    console.warn("V13 battle map status unavailable", error);
+    battleMapReady = false;
     return;
   }
   const row = Array.isArray(status) ? status[0] : status;
-  if (Number(row?.province_count || 0) >= 81 && Number(row?.run_count || 0) > 0) return;
-  if (isAdmin !== true) {
-    showToast("V12 savaş haritası henüz admin tarafından sunucuya hazırlanmadı.");
-    return;
+  battleMapReady = Boolean(row?.ready);
+  if (!battleMapReady) {
+    showToast("Savaş motoru hazır değil. Bir admin, Admin Center > Savaş Motoru bölümünden haritayı hazırlamalı.");
   }
-
-  showToast("V12 sunucu savaş haritası ilk kez hazırlanıyor…");
-  const { error: beginError } = await supabaseClient.rpc("admin_begin_battle_map_sync");
-  if (beginError) { console.error(beginError); showToast(`Savaş haritası hazırlanamadı: ${beginError.message}`); return; }
-
-  const totals = buildProvinceTotalsPayload();
-  const { error: totalsError } = await supabaseClient.rpc("admin_sync_province_totals", { p_rows: totals });
-  if (totalsError) { console.error(totalsError); showToast(`İl toplamları gönderilemedi: ${totalsError.message}`); return; }
-
-  const runs = buildProvinceRuns();
-  const batchSize = 350;
-  for (let i = 0; i < runs.length; i += batchSize) {
-    const { error } = await supabaseClient.rpc("admin_sync_province_runs", { p_rows: runs.slice(i, i + batchSize) });
-    if (error) { console.error(error); showToast(`Harita koordinatları gönderilemedi: ${error.message}`); return; }
-  }
-
-  const { error: finalizeError } = await supabaseClient.rpc("admin_finalize_battle_map");
-  if (finalizeError) { console.error(finalizeError); showToast(`Savaş motoru başlatılamadı: ${finalizeError.message}`); return; }
-  showToast(`V12 savaş motoru hazır · ${runs.length.toLocaleString("tr-TR")} sınır satırı senkronlandı.`);
 }
 
 async function loadServerBattleState() {
   if (!SUPABASE_ENABLED || !activeEvent || !supabaseClient) return;
-  const [scoresRes, provinceRes, regionRes, logRes] = await Promise.all([
+  const [scoresRes, provinceRes, regionRes, logRes, overviewRes] = await Promise.all([
     supabaseClient.from("event_team_scores").select("team_id,owned_pixels,province_bonus,region_bonus,total_score").eq("event_id", activeEvent.id),
     supabaseClient.from("province_control").select("province_name,team_id").eq("event_id", activeEvent.id),
     supabaseClient.from("region_control").select("region_name,team_id").eq("event_id", activeEvent.id),
-    supabaseClient.from("battle_events").select("event_type,scope_name,team_id,previous_team_id,bonus_points,created_at").eq("event_id", activeEvent.id).order("created_at", { ascending:false }).limit(20)
+    supabaseClient.from("battle_events").select("event_type,scope_name,team_id,previous_team_id,bonus_points,created_at").eq("event_id", activeEvent.id).order("created_at", { ascending:false }).limit(20),
+    supabaseClient.rpc("battle_province_overview", { p_event_slug: EVENT_SLUG })
   ]);
 
   if (!scoresRes.error) {
     for (const team of teams) {
       const row = (scoresRes.data || []).find(r => r.team_id === team.id);
       team.pixels = Number(row?.owned_pixels || 0);
+      team.provinceBonus = Number(row?.province_bonus || 0);
+      team.regionBonus = Number(row?.region_bonus || 0);
       team.points = Number(row?.total_score || 0);
     }
   }
@@ -1442,6 +1446,10 @@ async function loadServerBattleState() {
     }
   }
   recalcCapturedCounts();
+  if (!overviewRes.error) {
+    serverProvinceStats.clear();
+    for (const row of overviewRes.data || []) serverProvinceStats.set(row.province_name, row);
+  }
 
   if (!logRes.error) {
     const log = document.getElementById("battleLog");

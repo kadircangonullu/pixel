@@ -41,3 +41,12 @@ html,body{width:100%;height:100%}body{background:radial-gradient(circle at 48% -
 @media(max-width:700px){.result-podium{grid-template-columns:1fr}.season-list-item{grid-template-columns:1fr}.season-list-state{justify-self:start}}
 
 .admin-link{display:inline-flex;align-items:center;text-decoration:none;color:#ffb4d6;border-color:rgba(255,75,155,.35)!important;background:rgba(255,75,155,.08)!important}.admin-link.hidden{display:none!important}
+
+
+/* V13 — Battle Experience */
+.battle-state{padding:4px 7px;border-radius:999px;font-size:7px;font-weight:900;letter-spacing:.55px;border:1px solid var(--border)}
+.battle-state.dominant{color:#caffea;border-color:rgba(67,223,160,.32);background:rgba(67,223,160,.08)}
+.battle-state.critical{color:#ffd2dc;border-color:rgba(255,69,103,.38);background:rgba(255,69,103,.10);box-shadow:0 0 16px rgba(255,69,103,.08)}
+.battle-state.contested{color:#ffe6a0;border-color:rgba(255,198,63,.32);background:rgba(255,198,63,.08)}
+.battle-state.strong{color:#d9d0ff;border-color:rgba(139,103,255,.32);background:rgba(139,103,255,.08)}
+.battle-state.neutral{color:#aeb8c9}.fandom-distribution{display:flex;flex-direction:column;gap:6px;margin:10px 0}.dist-row{display:grid;grid-template-columns:72px minmax(0,1fr) 86px;gap:7px;align-items:center;font-size:7px;color:var(--muted)}.dist-row>span{display:flex;gap:5px;align-items:center;color:#d9e0ee;font-weight:700}.dist-row>span i{width:6px;height:6px;border-radius:50%}.dist-row>div{height:5px;border-radius:999px;background:#151c2b;overflow:hidden}.dist-row>div b{display:block;height:100%;border-radius:inherit}.dist-row>strong{text-align:right;font-size:7px;color:#aeb8c9}.distribution-empty{font-size:8px;color:var(--muted);padding:7px 0}.leader-row.v13 .leader-score{min-width:130px}.leader-row.v13 .leader-score small{white-space:normal;line-height:1.25}
