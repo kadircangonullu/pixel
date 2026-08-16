@@ -6,7 +6,7 @@
   <title>FANVERSE — Türkiye Fandom Savaşları</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="spectator-mode">
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
@@ -40,9 +40,10 @@
           <button class="nav-link" data-target="ranking">LİDERLİK</button>
           <button class="nav-link" data-target="teamcenter">TAKIM MERKEZİ</button>
           <button class="nav-link" data-target="seasons">SEZONLAR</button>
+          <button class="nav-link" data-target="history">GEÇMİŞ</button>
           <button class="nav-link" data-target="guide">REHBER</button>
         </nav>
-        <div class="topbar-account"><button class="notification-btn hidden" id="notificationBtn" type="button" aria-label="Bildirimler">◆<span id="notificationBadge" class="notification-badge hidden">0</span></button><a class="auth-chip admin-link hidden" id="adminPanelBtn" href="admin.html">ADMIN</a><button class="auth-chip" id="authBtn" type="button">DEMO MODU</button><button class="profile profile-button" id="profileOpenBtn" type="button" aria-label="Profili aç">
+        <div class="topbar-account"><button class="notification-btn hidden account-only" id="notificationBtn" type="button" aria-label="Bildirimler">◆<span id="notificationBadge" class="notification-badge hidden">0</span></button><a class="auth-chip admin-link hidden account-only" id="adminPanelBtn" href="admin.html">ADMIN</a><button class="auth-chip" id="authBtn" type="button">DEMO MODU</button><button class="profile profile-button account-only" id="profileOpenBtn" type="button" aria-label="Profili aç">
           <div class="profile-avatar" id="profileAvatar">F</div>
           <div><strong id="profileName">guest</strong><small id="profileLevelText">Seviye 1 · 0 XP</small></div>
         </button></div>
@@ -101,7 +102,7 @@
             <div id="provinceSpotlight" class="province-spotlight"><div class="province-empty">Haritada bir ilin üzerine gel.</div></div>
           </section>
 
-          <section class="panel-card progression-card">
+          <section class="panel-card progression-card account-only">
             <div class="panel-title-row"><div class="panel-title">PROFİL & İLERLEME</div><span class="tiny-note" id="streakBadge">0 GÜN SERİ</span></div>
             <div class="progression-profile">
               <div class="progression-avatar" id="progressionAvatar">F</div>
@@ -114,7 +115,7 @@
             <div class="daily-missions" id="dailyMissions"></div>
           </section>
 
-          <section class="panel-card team-center-teaser" id="teamCenterTeaser">
+          <section class="panel-card team-center-teaser account-only" id="teamCenterTeaser">
             <div class="panel-title-row"><div class="panel-title">TAKIM MERKEZİ</div><span class="tiny-note" id="teamRoleBadge">GİRİŞ GEREKLİ</span></div>
             <div id="teamTargetMini" class="team-target-mini"><div class="log-empty">Takım hedefi ve artwork savunması için giriş yap.</div></div>
             <button class="defense-action-btn full" id="openTeamCenterBtn">TAKIM MERKEZİNİ AÇ</button>
@@ -284,11 +285,21 @@
       <div class="modal-kicker">SEZON TAMAMLANDI</div>
       <h2 id="seasonResultTitle">Kazanan belirleniyor…</h2>
       <p id="seasonResultText"></p>
-      <div class="result-podium" id="seasonResultPodium"></div>
+      <div class="result-podium" id="seasonResultPodium"></div><div class="season-awards" id="seasonAwards"><div class="season-list-empty">Ödüller hesaplanmadı.</div></div>
       <div class="confirm-actions"><button id="openArchiveFromResultBtn" class="secondary-btn">SEZON ARŞİVİ</button><button id="closeSeasonResultBtn" class="place-btn small">HARİTAYI İNCELE</button></div>
     </div>
   </div>
 
+  <div class="history-modal hidden" id="historyModal">
+    <div class="history-card">
+      <div class="guide-head"><div><div class="modal-kicker">HARİTA GEÇMİŞİ</div><h2>Timelapse</h2><p>V17 sonrasında kaydedilen piksel değişimlerini zaman içinde oynat.</p></div><button id="closeHistoryBtn" aria-label="Kapat">×</button></div>
+      <div class="history-controls"><button class="secondary-btn" id="loadHistoryBtn">GEÇMİŞİ YÜKLE</button><button class="place-btn small" id="playHistoryBtn" disabled>▶ OYNAT</button><select id="historySpeed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option><option value="8">8x</option></select><span id="historyStatus">Henüz yüklenmedi</span></div>
+      <input id="historyRange" class="history-range" type="range" min="0" max="0" value="0" disabled />
+      <div class="history-meta"><span id="historyTime">—</span><span id="historyCount">0 olay</span></div>
+    </div>
+  </div>
+
+  <nav class="mobile-nav" id="mobileNav"><button data-mobile="map">⌂<span>Harita</span></button><button data-mobile="ownership">◆<span>Hakimiyet</span></button><button data-mobile="team" class="account-only">⚔<span>Takım</span></button><button data-mobile="history">◷<span>Geçmiş</span></button><button data-mobile="account" class="account-only">●<span>Profil</span></button></nav>
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>

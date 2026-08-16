@@ -9,13 +9,16 @@
 <body>
   <div class="admin-shell">
     <aside class="admin-sidebar">
-      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V13</small></div></div>
+      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V17</small></div></div>
       <nav>
         <button class="admin-nav active" data-tab="dashboard">GENEL BAKIŞ</button>
         <button class="admin-nav" data-tab="seasons">SEZONLAR</button>
         <button class="admin-nav" data-tab="battlemap">SAVAŞ MOTORU</button>
         <button class="admin-nav" data-tab="players">OYUNCULAR</button>
+        <button class="admin-nav" data-tab="roles">FANDOM ROLLERİ</button>
         <button class="admin-nav" data-tab="pixels">PİKSELLER</button>
+        <button class="admin-nav" data-tab="history">GEÇMİŞ / ROLLBACK</button>
+        <button class="admin-nav" data-tab="awards">SEZON ÖDÜLLERİ</button>
         <button class="admin-nav" data-tab="zones">KORUMALI ALANLAR</button>
         <button class="admin-nav" data-tab="logs">MODERASYON LOGU</button>
       </nav>
@@ -93,6 +96,19 @@
             <label><span>SÜRE (SAAT)</span><input id="banHours" type="number" min="0" max="8760" value="24" /></label>
             <label><span>SEBEP</span><input id="banReason" placeholder="spam / taciz / bot..." /></label>
           </div><div class="inline-actions"><button id="banUserBtn" class="danger">BAN UYGULA</button><button id="unbanUserBtn">BAN KALDIR</button></div></article>
+        </section>
+
+
+        <section class="admin-tab" data-panel="roles">
+          <div class="admin-grid two"><article class="panel"><h3>Sınırlı fandom liderliği</h3><p class="muted">Her fandomda en fazla 1 Komutan ve 5 Stratejist. Uzmanlık rolleri otomatik kalır.</p><div class="form-grid"><label><span>SEZON</span><input id="roleSeason" value="season-01" /></label><label><span>USER UUID</span><input id="roleUserId" placeholder="uuid" /></label><label><span>ROL</span><select id="roleType"><option value="commander">KOMUTAN</option><option value="strategist">STRATEJİST</option><option value="">LİDERLİĞİ KALDIR</option></select></label></div><button id="setRoleBtn" class="primary">ROLÜ UYGULA</button></article><article class="panel"><div class="panel-head"><h3>Mevcut liderlik</h3><button id="refreshRolesBtn">YENİLE</button></div><div id="rolesList" class="list"></div></article></div>
+        </section>
+
+        <section class="admin-tab" data-panel="history">
+          <div class="admin-grid two"><article class="panel"><h3>Koordinat geçmişi</h3><div class="form-grid three"><label><span>SEZON</span><input id="historySeason" value="season-01" /></label><label><span>X</span><input id="historyX" type="number" /></label><label><span>Y</span><input id="historyY" type="number" /></label></div><button id="loadPixelHistoryBtn" class="primary">GEÇMİŞİ GETİR</button><div id="pixelHistoryList" class="list"></div></article><article class="panel"><h3>Kullanıcı geçmişi / not</h3><label><span>USER UUID</span><input id="historyUserId" placeholder="uuid" /></label><div class="inline-actions"><button id="loadUserHistoryBtn">SON 100 PİKSEL</button></div><label><span>MODERASYON NOTU</span><input id="moderationNote" placeholder="Dahili not" /></label><button id="addModerationNoteBtn">NOT EKLE</button><div id="userHistoryList" class="list"></div></article></div>
+        </section>
+
+        <section class="admin-tab" data-panel="awards">
+          <article class="panel"><div class="panel-head"><div><h3>Sezon sonu ödülleri</h3><p class="muted">MVP, Savunmacı, Sanatçı, Cephe ve şampiyon fandomu server-side hesapla.</p></div></div><div class="toolbar"><input id="awardsSeason" value="season-01" /><button id="finalizeAwardsBtn" class="primary">ÖDÜLLERİ HESAPLA</button></div><div id="awardsAdminList" class="list"></div></article>
         </section>
 
         <section class="admin-tab" data-panel="pixels">

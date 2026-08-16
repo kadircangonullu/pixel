@@ -1234,6 +1234,7 @@ document.querySelectorAll(".nav-link").forEach(btn => btn.addEventListener("clic
   else if (target === "ranking") document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
   else if (target === "teamcenter") openTeamCenter();
   else if (target === "seasons") openSeasonArchive();
+  else if (target === "history") openHistoryModal();
   else if (target === "guide") openGuide();
   else if (target !== "map") showToast(`${btn.textContent.trim()} bölümü hazırlanıyor.`);
 }));
@@ -1372,6 +1373,7 @@ function showSeasonResult(force = false) {
   if (text) text.textContent = activeEvent?.name ? `${activeEvent.name} sona erdi. Harita artık salt okunur durumda; sonuçlar mevcut hakimiyet piksellerine göre gösteriliyor.` : "Etkinlik sona erdi. Harita artık salt okunur durumda.";
   if (podium) podium.innerHTML = standings.slice(0,3).map((entry, i) => `<div class="podium-item"><i style="background:${entry.team.color}"></i><strong>${i+1}. ${entry.team.name}</strong><span>${entry.pixels.toLocaleString("tr-TR")} hakimiyet pikseli · ${entry.team.capturedProvinces} il</span></div>`).join("");
   document.getElementById("seasonResultModal")?.classList.remove("hidden");
+  loadSeasonAwards();
 }
 function updateSeasonUI() {
   const state = effectiveEventState();
@@ -1386,7 +1388,7 @@ function updateSeasonUI() {
   const welcomeState = document.getElementById("welcomeSeasonState");
   if (welcomeName) welcomeName.textContent = activeEvent?.name || "FANVERSE Türkiye";
   if (welcomeState) welcomeState.textContent = state === "active" ? "CANLI" : state === "waiting" ? "YAKINDA" : state === "finished" ? "TAMAMLANDI" : "YÜKLENİYOR";
-  if (chip) chip.textContent = `${EVENT_SLUG.toUpperCase().replace("-", " ")} · V15`;
+  if (chip) chip.textContent = `${EVENT_SLUG.toUpperCase().replace("-", " ")} · V17`;
   if (range && activeEvent) range.textContent = `${formatEventDate(activeEvent.starts_at)} → ${formatEventDate(activeEvent.ends_at)}`;
   if (badge) {
     badge.classList.remove("waiting","finished");
@@ -1757,11 +1759,13 @@ async function initAccountLayer() {
   authUser = data.session?.user || null;
   updateAuthChip();
   if (authUser) {
+    leavePublicSpectatorMode();
     welcomeDismissed = true;
     document.getElementById("welcomeScreen")?.classList.add("hidden");
     await hydrateAccountFromSupabase();
     await heartbeatPresence();
   } else {
+    enterPublicSpectatorMode();
     showWelcome(true);
     if (mapReady && activeEvent) {
       await syncRemotePixels();
@@ -1776,11 +1780,13 @@ async function initAccountLayer() {
     authUser = session?.user || null;
     updateAuthChip();
     if (authUser) {
+      leavePublicSpectatorMode();
       welcomeDismissed = true;
       document.getElementById("welcomeScreen")?.classList.add("hidden");
       await hydrateAccountFromSupabase();
       await heartbeatPresence();
     } else {
+      enterPublicSpectatorMode();
       lockedTeamId = null; selectedTeam = null; serverProfileOverview = null;
       v16Role = null; v16TeamCenter = null; v16Artworks = []; v16Notifications = [];
       if (v16NotificationChannel) { try { await supabaseClient.removeChannel(v16NotificationChannel); } catch (_) {} v16NotificationChannel = null; }
@@ -2058,10 +2064,94 @@ document.getElementById("closeNotificationsBtn")?.addEventListener("click",close
 document.getElementById("notificationsModal")?.addEventListener("click",e=>{if(e.target.id==="notificationsModal")closeNotifications();});
 document.getElementById("markNotificationsReadBtn")?.addEventListener("click",markNotificationsRead);
 
+
+// =========================================================
+// V17 · FINAL PLATFORM
+// Spectator privacy + timelapse + season awards + mobile UX
+// =========================================================
+let spectatorMode = false;
+let v17HistoryEvents = [];
+let v17HistoryIndex = 0;
+let v17HistoryTimer = null;
+let v17HistorySnapshot = null;
+
+function resetPrivateUiState() {
+  serverProfileOverview = null;
+  v16Role = null; v16TeamCenter = null; v16Artworks = []; v16Notifications = [];
+  player.name = "guest"; player.xp = 0; player.totalPlaced = 0; player.streak = 0; player.lastActiveDay = null;
+  dailyState = { date: todayKey(), placed:0, defense:0, provinces:0, claimedRewards:[] };
+  selectedTeam = null; lockedTeamId = null;
+  document.getElementById("profileName") && (document.getElementById("profileName").textContent = "");
+  document.getElementById("profileLevelText") && (document.getElementById("profileLevelText").textContent = "");
+  document.getElementById("dailyMissions") && (document.getElementById("dailyMissions").innerHTML = "");
+  document.getElementById("playerBattleStats") && (document.getElementById("playerBattleStats").innerHTML = "");
+  document.getElementById("teamTargetMini") && (document.getElementById("teamTargetMini").innerHTML = `<div class="log-empty">Giriş yapıldığında takım merkezi açılır.</div>`);
+  updateNotificationBadge();
+}
+function enterPublicSpectatorMode(){
+  spectatorMode = true;
+  document.body.classList.add("spectator-mode");
+  resetPrivateUiState();
+  renderTeams();
+  scheduleDraw();
+}
+function leavePublicSpectatorMode(){
+  spectatorMode = false;
+  document.body.classList.remove("spectator-mode");
+}
+
+async function loadSeasonAwards(){
+  const wrap=document.getElementById("seasonAwards"); if(!wrap||!SUPABASE_ENABLED||!supabaseClient||!activeEvent)return;
+  const {data,error}=await supabaseClient.rpc("season_awards_public",{p_event_slug:EVENT_SLUG});
+  if(error){wrap.innerHTML=`<div class="season-list-empty">Ödüller henüz hazırlanmadı.</div>`;return;}
+  const labels={CHAMPION_TEAM:"ŞAMPİYON FANDOM",MVP:"SEZON MVP",DEFENDER:"EN İYİ SAVUNMACI",EXPLORER:"EN GENİŞ CEPHE",ARTIST:"EN İYİ SANATÇI"};
+  wrap.innerHTML=(data||[]).map(a=>{const team=teamById(a.team_id);const who=a.award_type==="CHAMPION_TEAM"?(team?.name||a.team_id):(a.username||"Oyuncu");return `<div class="award-card"><small>${labels[a.award_type]||a.award_type}</small><strong>${escapeHtml(who||"—")}</strong><span>${Number(a.value||0).toLocaleString("tr-TR")}</span></div>`}).join("")||`<div class="season-list-empty">Ödüller henüz hesaplanmadı.</div>`;
+}
+
+function setVisualCellForHistory(ev,useOld=false){
+  const x=Number(ev.x),y=Number(ev.y); if(!isLand(x,y))return; const i=idx(x,y);
+  const teamId=useOld?ev.old_team_id:ev.new_team_id; const color=useOld?ev.old_color:ev.new_color;
+  if(teamId){ownerGrid[i]=teamIndexById.get(teamId)||0;let pi=paletteColors.indexOf((color||teamById(teamId)?.color||"#ffffff").toLowerCase());if(pi<0){paletteColors.push((color||"#ffffff").toLowerCase());MATERIAL_COLORS.push((color||"#ffffff").toLowerCase());pi=paletteColors.length-1;}colorGrid[i]=PALETTE_OFFSET+pi;}
+  else {const province=provinceAt(x,y),home=HOME_PROVINCES[province]||null;if(home){ownerGrid[i]=teamIndexById.get(home)||0;let pi=paletteColors.indexOf(teamById(home).color);colorGrid[i]=PALETTE_OFFSET+Math.max(0,pi);}else{ownerGrid[i]=0;colorGrid[i]=(x*17+y*11)%43===0?MATERIAL_LAND_ALT:MATERIAL_LAND;}}
+}
+function refreshHistoryVisual(){rebuildWorldLayer();rebuildOwnershipLayer();defenseLayerTeamId=null;miniMapDirty=true;scheduleDraw();}
+function restoreHistorySnapshot(){if(!v17HistorySnapshot)return;colorGrid.set(v17HistorySnapshot.color);ownerGrid.set(v17HistorySnapshot.owner);v17HistorySnapshot=null;refreshHistoryVisual();}
+async function openHistoryModal(){document.getElementById("historyModal")?.classList.remove("hidden");}
+function closeHistoryModal(){clearInterval(v17HistoryTimer);v17HistoryTimer=null;restoreHistorySnapshot();document.getElementById("historyModal")?.classList.add("hidden");}
+async function loadHistory(){
+  if(!SUPABASE_ENABLED||!supabaseClient){showToast("Timelapse için Supabase gerekli.");return;}
+  const st=document.getElementById("historyStatus"); if(st)st.textContent="Yükleniyor…";
+  const {data,error}=await supabaseClient.rpc("timelapse_events",{p_event_slug:EVENT_SLUG,p_from:null,p_to:null,p_limit:10000});
+  if(error){if(st)st.textContent=error.message;return;}
+  restoreHistorySnapshot(); v17HistorySnapshot={color:colorGrid.slice(),owner:ownerGrid.slice()}; v17HistoryEvents=data||[];
+  for(let i=v17HistoryEvents.length-1;i>=0;i--)setVisualCellForHistory(v17HistoryEvents[i],true);
+  refreshHistoryVisual(); v17HistoryIndex=0;
+  const range=document.getElementById("historyRange");range.max=Math.max(0,v17HistoryEvents.length);range.value=0;range.disabled=!v17HistoryEvents.length;
+  document.getElementById("playHistoryBtn").disabled=!v17HistoryEvents.length;
+  document.getElementById("historyCount").textContent=`${v17HistoryEvents.length.toLocaleString("tr-TR")} olay`;
+  if(st)st.textContent=v17HistoryEvents.length?"Hazır":"V17 sonrası geçmiş henüz yok";updateHistoryMeta();
+}
+function updateHistoryMeta(){const ev=v17HistoryEvents[Math.max(0,v17HistoryIndex-1)];document.getElementById("historyTime").textContent=ev?new Intl.DateTimeFormat("tr-TR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(ev.created_at)):"Başlangıç";}
+function seekHistory(target){target=Math.max(0,Math.min(v17HistoryEvents.length,Number(target))); if(!v17HistorySnapshot)return; colorGrid.set(v17HistorySnapshot.color);ownerGrid.set(v17HistorySnapshot.owner);for(let i=v17HistoryEvents.length-1;i>=0;i--)setVisualCellForHistory(v17HistoryEvents[i],true);for(let i=0;i<target;i++)setVisualCellForHistory(v17HistoryEvents[i],false);v17HistoryIndex=target;document.getElementById("historyRange").value=target;refreshHistoryVisual();updateHistoryMeta();}
+function toggleHistoryPlay(){if(v17HistoryTimer){clearInterval(v17HistoryTimer);v17HistoryTimer=null;document.getElementById("playHistoryBtn").textContent="▶ OYNAT";return;}const speed=()=>Number(document.getElementById("historySpeed").value||1);document.getElementById("playHistoryBtn").textContent="Ⅱ DURDUR";v17HistoryTimer=setInterval(()=>{if(v17HistoryIndex>=v17HistoryEvents.length){clearInterval(v17HistoryTimer);v17HistoryTimer=null;document.getElementById("playHistoryBtn").textContent="▶ OYNAT";return;}const n=Math.min(v17HistoryEvents.length,v17HistoryIndex+Math.max(1,speed()*3));for(let i=v17HistoryIndex;i<n;i++)setVisualCellForHistory(v17HistoryEvents[i],false);v17HistoryIndex=n;document.getElementById("historyRange").value=n;refreshHistoryVisual();updateHistoryMeta();},120);}
+
+document.getElementById("closeHistoryBtn")?.addEventListener("click",closeHistoryModal);
+document.getElementById("loadHistoryBtn")?.addEventListener("click",loadHistory);
+document.getElementById("playHistoryBtn")?.addEventListener("click",toggleHistoryPlay);
+document.getElementById("historyRange")?.addEventListener("input",e=>seekHistory(e.target.value));
+document.getElementById("historyModal")?.addEventListener("click",e=>{if(e.target.id==="historyModal")closeHistoryModal();});
+document.querySelectorAll("[data-mobile]").forEach(btn=>btn.addEventListener("click",()=>{const t=btn.dataset.mobile;if(t==="map")resetViewToTurkey();else if(t==="ownership"){viewMode="ownership";document.querySelectorAll(".view-btn").forEach(x=>x.classList.toggle("active",x.dataset.view==="ownership"));scheduleDraw();}else if(t==="team")openTeamCenter();else if(t==="history")openHistoryModal();else if(t==="account")openProfileModal();}));
+
+// Touch: one finger drag, tap select; two finger pinch zoom.
+let v17Touches=null;
+canvas.addEventListener("touchstart",e=>{if(!mapReady)return;if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];v17Touches={mode:"pinch",dist:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),zoom:camera.zoom,cx:(a.clientX+b.clientX)/2,cy:(a.clientY+b.clientY)/2};}else if(e.touches.length===1){const t=e.touches[0];v17Touches={mode:"drag",sx:t.clientX,sy:t.clientY,cx:camera.x,cy:camera.y,moved:false};}e.preventDefault();},{passive:false});
+canvas.addEventListener("touchmove",e=>{if(!v17Touches)return;if(v17Touches.mode==="pinch"&&e.touches.length===2){const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);const r=canvas.getBoundingClientRect();setZoom(v17Touches.zoom*(d/v17Touches.dist),v17Touches.cx-r.left,v17Touches.cy-r.top);}else if(v17Touches.mode==="drag"&&e.touches.length===1){const t=e.touches[0],dx=t.clientX-v17Touches.sx,dy=t.clientY-v17Touches.sy;if(Math.abs(dx)>5||Math.abs(dy)>5)v17Touches.moved=true;camera.x=v17Touches.cx-dx/camera.zoom;camera.y=v17Touches.cy-dy/camera.zoom;clampCamera();scheduleDraw();}e.preventDefault();},{passive:false});
+canvas.addEventListener("touchend",e=>{if(v17Touches?.mode==="drag"&&!v17Touches.moved){const t=e.changedTouches[0],c=getWorldCoordinates(t.clientX,t.clientY);selectedPixel=isLand(c.x,c.y)?c:null;if(selectedPixel)renderPixelInspector(c.x,c.y);scheduleDraw();}v17Touches=null;});
+
 document.getElementById("logoutBtn")?.addEventListener("click", signOutFanverse);
 document.getElementById("welcomeLoginBtn")?.addEventListener("click", () => { hideWelcome(); openAuthModal(); document.getElementById("authEmail")?.focus(); });
 document.getElementById("welcomeSignupBtn")?.addEventListener("click", () => { hideWelcome(); openAuthModal(); setAuthStatus("Yeni hesap için e-posta ve şifre girip Kayıt Ol'a bas."); document.getElementById("authEmail")?.focus(); });
-document.getElementById("welcomeWatchBtn")?.addEventListener("click", () => { hideWelcome(); showToast("İzleyici modu: haritayı görebilirsin; piksel bırakmak için giriş yapmalısın."); });
+document.getElementById("welcomeWatchBtn")?.addEventListener("click", () => { enterPublicSpectatorMode(); hideWelcome(); showToast("İzleyici modu: yalnızca herkese açık harita ve canlı istatistikler gösteriliyor."); });
 document.getElementById("closeGuideBtn")?.addEventListener("click", closeGuide);
 document.getElementById("guideGoMapBtn")?.addEventListener("click", () => { closeGuide(); document.querySelectorAll(".nav-link").forEach(x => x.classList.toggle("active", x.dataset.target === "map")); });
 document.getElementById("guideModal")?.addEventListener("click", e => { if (e.target.id === "guideModal") closeGuide(); });
