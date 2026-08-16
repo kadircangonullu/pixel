@@ -22,6 +22,10 @@ const serverProvinceStats = new Map();
 let battleMapReady = false;
 let remotePixelsLoaded = false;
 let remoteSyncPending = false;
+let liveStatsTimer = null;
+let presenceTimer = null;
+let welcomeDismissed = false;
+let serverLiveStats = null;
 let lockedTeamId = localStorage.getItem(TEAM_LOCK_STORAGE_KEY) || null;
 let onboardingCandidateId = null;
 let serverProfileOverview = null;
@@ -237,7 +241,7 @@ function checkDailyRewards() {
 
 let todayPixels = 0;
 let mapReady = false;
-let viewMode = "artwork";
+let viewMode = "ownership";
 let defenseLayerTeamId = null;
 let heatmapEnabled = false;
 const ATTACK_WINDOW_MS = 5 * 60 * 1000;
@@ -382,7 +386,13 @@ async function loadTurkeyMap() {
     loadingEl.classList.add("hidden");
     resetViewToTurkey();
     renderAll();
-    if (SUPABASE_ENABLED && authUser) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); }
+    if (SUPABASE_ENABLED && activeEvent) {
+      if (authUser) await ensureServerBattleMap();
+      await syncRemotePixels();
+      await loadServerBattleState();
+      subscribeRealtimeBattleState();
+      await refreshLiveStats();
+    }
     scheduleDraw();
   } catch (error) {
     console.error(error);
@@ -884,9 +894,17 @@ function renderLeaderboard() {
 }
 
 function updateGlobalStats() {
-  document.getElementById("pixelCount").textContent = todayPixels.toLocaleString("tr-TR");
-  document.getElementById("provinceCount").textContent = `${provinceFeatures.filter(f => f._capturedBy).length} / 81`;
-  document.getElementById("securedCount").textContent = `${regions.filter(r => r.securedBy).length} / 7`;
+  const live = serverLiveStats;
+  const onlineEl = document.getElementById("onlineCount");
+  const todayEl = document.getElementById("pixelCount");
+  const seasonEl = document.getElementById("seasonPixelCount");
+  const playersEl = document.getElementById("seasonPlayerCount");
+  if (onlineEl) onlineEl.textContent = live ? Number(live.active_players || 0).toLocaleString("tr-TR") : "—";
+  if (todayEl) todayEl.textContent = live ? Number(live.today_placements || 0).toLocaleString("tr-TR") : todayPixels.toLocaleString("tr-TR");
+  if (seasonEl) seasonEl.textContent = live ? Number(live.season_placements || 0).toLocaleString("tr-TR") : "—";
+  if (playersEl) playersEl.textContent = live ? Number(live.joined_players || 0).toLocaleString("tr-TR") : "—";
+  document.getElementById("provinceCount").textContent = `${live ? Number(live.controlled_provinces || 0) : provinceFeatures.filter(f => f._capturedBy).length} / 81`;
+  document.getElementById("securedCount").textContent = `${live ? Number(live.controlled_regions || 0) : regions.filter(r => r.securedBy).length} / 7`;
   const playableEl = document.getElementById("playableCount");
   if (playableEl) playableEl.textContent = totalPlayablePixels.toLocaleString("tr-TR");
 }
@@ -1213,7 +1231,8 @@ document.querySelectorAll(".nav-link").forEach(btn => btn.addEventListener("clic
   if (target === "regions") document.querySelector(".region-board")?.scrollIntoView({ behavior: "smooth", block: "start" });
   else if (target === "ranking") document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
   else if (target === "seasons") openSeasonArchive();
-  else if (target !== "map") showToast(`${btn.textContent.trim()} bölümü sonraki modülde genişletilecek.`);
+  else if (target === "guide") openGuide();
+  else if (target !== "map") showToast(`${btn.textContent.trim()} bölümü hazırlanıyor.`);
 }));
 
 
@@ -1268,6 +1287,7 @@ function openProfileModal() {
   document.getElementById("modalStreak").textContent=`${player.streak||0} gün`;
   const mr=document.getElementById("modalTeamRank"); if(mr) mr.textContent=serverProfileOverview ? `#${serverProfileOverview.team_rank || "—"} / ${serverProfileOverview.team_members || 0}` : "—";
   const me=document.getElementById("modalEnemyTaken"); if(me) me.textContent=Number(serverProfileOverview?.enemy_pixels_taken||0).toLocaleString("tr-TR");
+  const logout=document.getElementById("logoutBtn"); if(logout) logout.classList.toggle("hidden", !(SUPABASE_ENABLED && authUser));
   modal.classList.remove("hidden");
 }
 document.getElementById("profileOpenBtn")?.addEventListener("click", openProfileModal);
@@ -1359,7 +1379,11 @@ function updateSeasonUI() {
   const chip = document.getElementById("seasonChip");
   const place = document.getElementById("placePixelBtn");
   if (eventName && activeEvent?.name) eventName.textContent = activeEvent.name;
-  if (chip) chip.textContent = `${EVENT_SLUG.toUpperCase().replace("-", " ")} · V10`;
+  const welcomeName = document.getElementById("welcomeSeasonName");
+  const welcomeState = document.getElementById("welcomeSeasonState");
+  if (welcomeName) welcomeName.textContent = activeEvent?.name || "FANVERSE Türkiye";
+  if (welcomeState) welcomeState.textContent = state === "active" ? "CANLI" : state === "waiting" ? "YAKINDA" : state === "finished" ? "TAMAMLANDI" : "YÜKLENİYOR";
+  if (chip) chip.textContent = `${EVENT_SLUG.toUpperCase().replace("-", " ")} · V15`;
   if (range && activeEvent) range.textContent = `${formatEventDate(activeEvent.starts_at)} → ${formatEventDate(activeEvent.ends_at)}`;
   if (badge) {
     badge.classList.remove("waiting","finished");
@@ -1579,10 +1603,10 @@ async function hydrateAccountFromSupabase() {
   }
   await loadServerProfileOverview();
   renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI(); await updateAdminPanelVisibility();
-  if (mapReady) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); } else remoteSyncPending = true;
+  if (mapReady) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); await refreshLiveStats(); } else remoteSyncPending = true;
 }
 async function syncRemotePixels() {
-  if (!SUPABASE_ENABLED || !authUser || !activeEvent || !mapReady) return;
+  if (!SUPABASE_ENABLED || !activeEvent || !mapReady || !supabaseClient) return;
   let from = 0; const pageSize = 1000;
   while (true) {
     const { data, error } = await supabaseClient.from("pixels").select("x,y,color,team_id,province_name,updated_at").eq("event_id", activeEvent.id).range(from, from + pageSize - 1);
@@ -1655,24 +1679,114 @@ function restoreBaseCell(x, y) {
   evaluateProvinceCapture(provinceName);
 }
 
+
+function renderWelcomeFandoms() {
+  const wrap = document.getElementById("welcomeFandoms");
+  if (!wrap) return;
+  wrap.innerHTML = teams.map(team => `<span class="welcome-fandom"><i style="background:${team.color}"></i>${team.name}</span>`).join("");
+}
+
+function showWelcome(force=false) {
+  const screen = document.getElementById("welcomeScreen");
+  if (!screen || authUser || (!force && welcomeDismissed)) return;
+  renderWelcomeFandoms();
+  updateSeasonUI();
+  screen.classList.remove("hidden");
+}
+function hideWelcome() {
+  welcomeDismissed = true;
+  document.getElementById("welcomeScreen")?.classList.add("hidden");
+}
+function openGuide() { document.getElementById("guideModal")?.classList.remove("hidden"); }
+function closeGuide() { document.getElementById("guideModal")?.classList.add("hidden"); }
+
+async function refreshLiveStats() {
+  if (!SUPABASE_ENABLED || !supabaseClient) { serverLiveStats = null; updateGlobalStats(); return; }
+  const { data, error } = await supabaseClient.rpc("fanverse_live_stats", { p_event_slug: EVENT_SLUG });
+  if (error) { console.warn("V15 live stats unavailable", error); return; }
+  serverLiveStats = Array.isArray(data) ? data[0] : data;
+  updateGlobalStats();
+}
+async function heartbeatPresence() {
+  if (!SUPABASE_ENABLED || !supabaseClient || !authUser) return;
+  const { error } = await supabaseClient.rpc("fanverse_presence_heartbeat", { p_event_slug: EVENT_SLUG });
+  if (error) console.warn("V15 presence heartbeat unavailable", error);
+  await refreshLiveStats();
+}
+function startLiveStatTimers() {
+  clearInterval(liveStatsTimer); clearInterval(presenceTimer);
+  liveStatsTimer = setInterval(refreshLiveStats, 15000);
+  if (authUser) presenceTimer = setInterval(heartbeatPresence, 45000);
+}
+async function signOutFanverse() {
+  if (!SUPABASE_ENABLED || !supabaseClient) return;
+  const btn = document.getElementById("logoutBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "ÇIKIŞ YAPILIYOR…"; }
+  try { await supabaseClient.rpc("fanverse_presence_leave", { p_event_slug: EVENT_SLUG }); } catch (_) {}
+  const { error } = await supabaseClient.auth.signOut();
+  if (btn) { btn.disabled = false; btn.textContent = "ÇIKIŞ YAP"; }
+  if (error) { showToast(`Çıkış yapılamadı: ${error.message}`); return; }
+  document.getElementById("profileModal")?.classList.add("hidden");
+  welcomeDismissed = false;
+  showWelcome(true);
+}
+
 async function initAccountLayer() {
   updateAuthChip();
+  renderWelcomeFandoms();
   if (!SUPABASE_ENABLED) {
     if (lockedTeamId) selectedTeam = teamById(lockedTeamId);
     else setTimeout(() => openTeamOnboarding(), 650);
-    renderAll(); return;
+    renderAll();
+    showWelcome(true);
+    return;
   }
   supabaseClient = window.supabase.createClient(FANVERSE_CONFIG.url, FANVERSE_CONFIG.publishableKey);
+
+  // Etkinlik bilgisi izleyici modunda da gereklidir.
+  const { data: eventData } = await supabaseClient.from("events").select("id,slug,name,starts_at,ends_at,status").eq("slug", EVENT_SLUG).maybeSingle();
+  activeEvent = eventData || null;
+  updateSeasonUI();
+  await refreshLiveStats();
+
   const { data } = await supabaseClient.auth.getSession();
-  authUser = data.session?.user || null; updateAuthChip();
-  if (authUser) await hydrateAccountFromSupabase();
+  authUser = data.session?.user || null;
+  updateAuthChip();
+  if (authUser) {
+    welcomeDismissed = true;
+    document.getElementById("welcomeScreen")?.classList.add("hidden");
+    await hydrateAccountFromSupabase();
+    await heartbeatPresence();
+  } else {
+    showWelcome(true);
+    if (mapReady && activeEvent) {
+      await syncRemotePixels();
+      await loadServerBattleState();
+      subscribeRealtimeBattleState();
+      await refreshLiveStats();
+    }
+  }
+  startLiveStatTimers();
+
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-    authUser = session?.user || null; updateAuthChip();
-    if (authUser) await hydrateAccountFromSupabase();
-    else { lockedTeamId = null; selectedTeam = null; document.getElementById("adminPanelBtn")?.classList.add("hidden"); if (realtimeBattleChannel) { supabaseClient.removeChannel(realtimeBattleChannel); realtimeBattleChannel = null; } renderAll(); }
+    authUser = session?.user || null;
+    updateAuthChip();
+    if (authUser) {
+      welcomeDismissed = true;
+      document.getElementById("welcomeScreen")?.classList.add("hidden");
+      await hydrateAccountFromSupabase();
+      await heartbeatPresence();
+    } else {
+      lockedTeamId = null; selectedTeam = null; serverProfileOverview = null;
+      document.getElementById("adminPanelBtn")?.classList.add("hidden");
+      clearInterval(presenceTimer);
+      renderAll();
+      welcomeDismissed = false;
+      showWelcome(true);
+    }
+    startLiveStatTimers();
   });
 }
-
 document.getElementById("authBtn")?.addEventListener("click", openAuthModal);
 document.getElementById("closeAuthBtn")?.addEventListener("click", () => document.getElementById("authModal")?.classList.add("hidden"));
 document.getElementById("closeTeamLockBtn")?.addEventListener("click", () => document.getElementById("teamLockModal")?.classList.add("hidden"));
@@ -1694,10 +1808,20 @@ document.getElementById("signUpBtn")?.addEventListener("click", async () => {
   else { setAuthStatus("Hesap oluşturuldu ve giriş yapıldı.","ok"); document.getElementById("authModal").classList.add("hidden"); }
 });
 
+
+document.getElementById("logoutBtn")?.addEventListener("click", signOutFanverse);
+document.getElementById("welcomeLoginBtn")?.addEventListener("click", () => { hideWelcome(); openAuthModal(); document.getElementById("authEmail")?.focus(); });
+document.getElementById("welcomeSignupBtn")?.addEventListener("click", () => { hideWelcome(); openAuthModal(); setAuthStatus("Yeni hesap için e-posta ve şifre girip Kayıt Ol'a bas."); document.getElementById("authEmail")?.focus(); });
+document.getElementById("welcomeWatchBtn")?.addEventListener("click", () => { hideWelcome(); showToast("İzleyici modu: haritayı görebilirsin; piksel bırakmak için giriş yapmalısın."); });
+document.getElementById("closeGuideBtn")?.addEventListener("click", closeGuide);
+document.getElementById("guideGoMapBtn")?.addEventListener("click", () => { closeGuide(); document.querySelectorAll(".nav-link").forEach(x => x.classList.toggle("active", x.dataset.target === "map")); });
+document.getElementById("guideModal")?.addEventListener("click", e => { if (e.target.id === "guideModal") closeGuide(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && authUser) heartbeatPresence(); });
+
 document.getElementById("closeSeasonModalBtn")?.addEventListener("click", () => document.getElementById("seasonModal")?.classList.add("hidden"));
 document.getElementById("closeSeasonResultBtn")?.addEventListener("click", () => document.getElementById("seasonResultModal")?.classList.add("hidden"));
 document.getElementById("openArchiveFromResultBtn")?.addEventListener("click", () => { document.getElementById("seasonResultModal")?.classList.add("hidden"); openSeasonArchive(); });
 
-renderPalette(); renderTeams(); renderLeaderboard(); renderAttackCenter(); renderProgression(); updateCooldown(); updateSeasonUI(); requestAnimationFrame(resizeCanvas); loadTurkeyMap(); initAccountLayer();
+renderWelcomeFandoms(); renderPalette(); renderTeams(); renderLeaderboard(); renderAttackCenter(); renderProgression(); updateCooldown(); updateSeasonUI(); requestAnimationFrame(resizeCanvas); loadTurkeyMap(); initAccountLayer();
 seasonUiTimer = setInterval(updateSeasonUI, 1000);
 setInterval(() => { pruneRecentAttacks(); if (recentAttacks.length) { heatmapDirty = true; renderAttackCenter(); scheduleDraw(); } }, 5000);

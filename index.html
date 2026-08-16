@@ -22,8 +22,10 @@
 
       <div class="sidebar-block stats-block">
         <div class="block-title">CANLI İSTATİSTİKLER</div>
-        <div class="stat-row"><span>●</span><div><strong id="onlineCount">2.418</strong><small>Kullanıcı çevrimiçi</small></div></div>
-        <div class="stat-row"><span>◆</span><div><strong id="pixelCount">0</strong><small>Bugün yerleştirilen piksel</small></div></div>
+        <div class="stat-row"><span>●</span><div><strong id="onlineCount">—</strong><small>Son 2 dk aktif oyuncu</small></div></div>
+        <div class="stat-row"><span>◆</span><div><strong id="pixelCount">—</strong><small>Bugün yerleştirilen piksel</small></div></div>
+        <div class="stat-row"><span>◇</span><div><strong id="seasonPixelCount">—</strong><small>Sezon toplam yerleştirme</small></div></div>
+        <div class="stat-row"><span>◎</span><div><strong id="seasonPlayerCount">—</strong><small>Sezona katılan oyuncu</small></div></div>
         <div class="stat-row"><span>▦</span><div><strong id="playableCount">—</strong><small>Toplam oynanabilir piksel</small></div></div>
         <div class="stat-row"><span>⌂</span><div><strong id="provinceCount">7 / 81</strong><small>Fandom kontrolündeki il</small></div></div>
         <div class="stat-row"><span>★</span><div><strong id="securedCount">0 / 7</strong><small>Tamamen ele geçirilen bölge</small></div></div>
@@ -48,11 +50,11 @@
       <div class="content">
         <section class="canvas-section">
           <div class="canvas-header">
-            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V13</span></div>
+            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V15</span></div>
             <div class="canvas-tools">
               <div class="view-switch" aria-label="Harita görünümü">
-                <button class="view-btn active" data-view="artwork">ARTWORK</button>
-                <button class="view-btn" data-view="ownership">HAKİMİYET</button>
+                <button class="view-btn" data-view="artwork">ARTWORK</button>
+                <button class="view-btn active" data-view="ownership">HAKİMİYET</button>
                 <button class="view-btn" data-view="defense">SAVUNMA</button>
               </div>
               <span class="canvas-coords">X: <span id="coordX">0</span> · Y: <span id="coordY">0</span></span>
@@ -157,11 +159,49 @@
     </div>
   </div>
 
+
+  <div class="welcome-screen hidden" id="welcomeScreen">
+    <div class="welcome-orbit welcome-orbit-a"></div><div class="welcome-orbit welcome-orbit-b"></div>
+    <div class="welcome-card">
+      <div class="welcome-brand"><span>◆</span><strong>FANVERSE</strong></div>
+      <div class="welcome-kicker">TÜRKİYE FANDOM SAVAŞLARI</div>
+      <h1>Takımını seç.<br><em>Türkiye'yi şekillendir.</em></h1>
+      <p>81 il üzerinde artwork üret, kendi fandomunun alanını savun ve bölgeleri ele geçirmek için takımınla birlikte savaş.</p>
+      <div class="welcome-season">
+        <div><small>AKTİF SEZON</small><strong id="welcomeSeasonName">FANVERSE Türkiye</strong></div>
+        <span id="welcomeSeasonState">YÜKLENİYOR</span>
+      </div>
+      <div class="welcome-fandoms" id="welcomeFandoms"></div>
+      <div class="welcome-actions">
+        <button class="welcome-primary" id="welcomeLoginBtn">GİRİŞ YAP</button>
+        <button class="welcome-secondary" id="welcomeSignupBtn">HESAP OLUŞTUR</button>
+        <button class="welcome-watch" id="welcomeWatchBtn">HARİTAYI SADECE İZLE →</button>
+      </div>
+      <div class="welcome-rules"><span>30 sn cooldown</span><span>7 fandom</span><span>81 il</span><span>Takım sezon boyunca kilitli</span></div>
+    </div>
+  </div>
+
+  <div class="guide-modal hidden" id="guideModal">
+    <div class="guide-card">
+      <div class="guide-head"><div><div class="modal-kicker">FANVERSE REHBERİ</div><h2>Nasıl oynanır?</h2><p>Artwork ve alan hakimiyeti aynı haritada birlikte yaşar.</p></div><button id="closeGuideBtn" aria-label="Kapat">×</button></div>
+      <div class="guide-grid">
+        <article><b>01</b><h3>Takımını seç</h3><p>Bir sezonda yalnızca tek fandom seçebilirsin. Sezon bitene kadar değiştirilemez.</p></article>
+        <article><b>02</b><h3>Piksel bırak</h3><p>Her 30 saniyede bir piksel bırak. Pikselin rengi artwork'ü, sahibi ise hakimiyeti belirler.</p></article>
+        <article class="guide-wide"><b>03</b><h3>Artwork ≠ Hakimiyet</h3><div class="guide-compare"><div><span class="guide-art-demo">CRUSH</span><strong>ARTWORK</strong><small>Siyah, beyaz veya istediğin renk.</small></div><i>→</i><div><span class="guide-own-demo">■■■■■</span><strong>HAKİMİYET</strong><small>Aynı pikseller hâlâ CRUSH'a ait olabilir.</small></div></div></article>
+        <article><b>04</b><h3>İl ele geçir</h3><p>Bir ilin bütün oynanabilir pikselleri aynı fandoma geçtiğinde tam hakimiyet kazanılır ve il bonusu verilir.</p></article>
+        <article><b>05</b><h3>Bölgeyi tamamla</h3><p>Coğrafi bölgedeki tüm illeri aynı fandom kontrol ederse büyük bölge bonusu kazanılır.</p></article>
+        <article><b>06</b><h3>Savun</h3><p>Savunma görünümü kendi fandomundan olmayan pikselleri belirginleştirir; artwork sabotajlarını kolayca bulursun.</p></article>
+        <article><b>07</b><h3>Sezonu kazan</h3><p>Piksel katkısı, il bonusları ve bölge bonusları gerçek leaderboard puanına dönüşür.</p></article>
+      </div>
+      <div class="guide-footer"><button class="place-btn small" id="guideGoMapBtn">HARİTAYA DÖN</button></div>
+    </div>
+  </div>
+
   <div class="profile-modal hidden" id="profileModal">
     <div class="profile-modal-card">
       <div class="modal-kicker">FANVERSE PROFİLİ</div>
       <h3>Oyuncu profilin</h3>
-      <p>V14, Supabase yapılandırıldığında XP, görevler ve kişisel savaş istatistiklerini sunucudan okur. Yapılandırma yoksa tarayıcıda demo profil ve kilitli fandom ile çalışır.</p>
+      <p>Profilin, fandom üyeliğin ve sezon ilerlemen hesabına bağlıdır. Takım seçimin aktif sezon bitene kadar kilitlidir.</p>
       <label class="profile-field"><span>KULLANICI ADI</span><input id="profileNameInput" maxlength="18" placeholder="guest" /></label>
       <div class="profile-modal-stats">
         <div><small>SEVİYE</small><strong id="modalLevel">1</strong></div>
@@ -171,7 +211,7 @@
         <div><small>FANDOM SIRASI</small><strong id="modalTeamRank">—</strong></div>
         <div><small>GERİ ALINAN</small><strong id="modalEnemyTaken">0</strong></div>
       </div>
-      <div class="confirm-actions"><button id="closeProfileBtn" class="secondary-btn">Kapat</button><button id="saveProfileBtn" class="place-btn small">Kaydet</button></div>
+      <div class="profile-account-actions"><button id="logoutBtn" class="danger-btn" type="button">ÇIKIŞ YAP</button><div class="confirm-actions"><button id="closeProfileBtn" class="secondary-btn">Kapat</button><button id="saveProfileBtn" class="place-btn small">Kaydet</button></div></div>
     </div>
   </div>
 
