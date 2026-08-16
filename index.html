@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FANVERSE — Türkiye Fandom Savaşları</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">◆</div>
+        <div><h1>FANVERSE</h1><span>Türkiye fandom savaşları</span></div>
+      </div>
+
+      <div class="sidebar-block">
+        <div class="block-title">TAKIMIN</div>
+        <p class="block-desc" id="teamLockDesc">İlk seçiminden sonra takımın etkinlik bitene kadar kilitlenir. Tüm pikseller hesabının takımına yazılır.</p>
+        <div class="team-list" id="teamList"></div>
+      </div>
+
+      <div class="sidebar-block stats-block">
+        <div class="block-title">CANLI İSTATİSTİKLER</div>
+        <div class="stat-row"><span>●</span><div><strong id="onlineCount">2.418</strong><small>Kullanıcı çevrimiçi</small></div></div>
+        <div class="stat-row"><span>◆</span><div><strong id="pixelCount">0</strong><small>Bugün yerleştirilen piksel</small></div></div>
+        <div class="stat-row"><span>▦</span><div><strong id="playableCount">—</strong><small>Toplam oynanabilir piksel</small></div></div>
+        <div class="stat-row"><span>⌂</span><div><strong id="provinceCount">7 / 81</strong><small>Fandom kontrolündeki il</small></div></div>
+        <div class="stat-row"><span>★</span><div><strong id="securedCount">0 / 7</strong><small>Tamamen ele geçirilen bölge</small></div></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <nav>
+          <button class="nav-link active" data-target="map">HARİTA</button>
+          <button class="nav-link" data-target="regions">BÖLGELER</button>
+          <button class="nav-link" data-target="ranking">LİDERLİK</button>
+          <button class="nav-link" data-target="gallery">GALERİ</button>
+          <button class="nav-link" data-target="guide">REHBER</button>
+        </nav>
+        <div class="topbar-account"><button class="auth-chip" id="authBtn" type="button">DEMO MODU</button><button class="profile profile-button" id="profileOpenBtn" type="button" aria-label="Profili aç">
+          <div class="profile-avatar" id="profileAvatar">F</div>
+          <div><strong id="profileName">guest</strong><small id="profileLevelText">Seviye 1 · 0 XP</small></div>
+        </button></div>
+      </header>
+
+      <div class="content">
+        <section class="canvas-section">
+          <div class="canvas-header">
+            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip">SEZON 01 · V9</span></div>
+            <div class="canvas-tools">
+              <div class="view-switch" aria-label="Harita görünümü">
+                <button class="view-btn active" data-view="artwork">ARTWORK</button>
+                <button class="view-btn" data-view="ownership">HAKİMİYET</button>
+                <button class="view-btn" data-view="defense">SAVUNMA</button>
+              </div>
+              <span class="canvas-coords">X: <span id="coordX">0</span> · Y: <span id="coordY">0</span></span>
+              <button id="zoomOutBtn" class="tool-btn" title="Uzaklaş">−</button>
+              <button id="zoomInBtn" class="tool-btn" title="Yaklaş">+</button>
+              <button id="resetViewBtn" class="tool-btn" title="Haritayı ortala">⌂</button>
+            </div>
+          </div>
+
+          <div class="canvas-wrapper">
+            <canvas id="pixelCanvas"></canvas>
+            <div class="map-loading" id="mapLoading"><strong>81 il sınırı hazırlanıyor…</strong><span>Gerçek il poligonları piksel haritasına dönüştürülüyor.</span></div>
+            <div class="map-tip">Kaydır: sürükle · Zoom: tekerlek · Piksel seç: tıkla</div>
+            <div class="hover-region" id="hoverRegion">Türkiye</div>
+            <div class="minimap-wrap"><canvas id="miniMap" width="260" height="112"></canvas></div>
+            <div class="pixel-inspector hidden" id="pixelInspector">
+              <div class="inspector-head"><strong>PİKSEL BİLGİSİ</strong><button id="closeInspectorBtn" aria-label="Kapat">×</button></div>
+              <div id="pixelInspectorBody"></div>
+            </div>
+          </div>
+
+          <div class="pixel-controls">
+            <div class="cooldown"><small>SONRAKİ PİKSEL</small><strong id="cooldown">HAZIR</strong></div>
+            <div class="palette" id="palette"></div>
+            <button class="place-btn" id="placePixelBtn">PİKSEL YERLEŞTİR</button>
+          </div>
+        </section>
+
+        <aside class="right-panel">
+          <section class="panel-card event-panel">
+            <div class="panel-title-row"><div class="panel-title">SEZON ETKİNLİĞİ</div><span class="live-badge">CANLI</span></div>
+            <div class="event-card">
+              <span class="event-label">TÜRKİYE DOMINATION</span>
+              <h3>81 İl · 7 Bölge · 1440×615 savaş alanı · Savunma Merkezi</h3>
+              <p>Artwork görünümünde sanatını koru; Hakimiyet görünümünde gerçek piksel sahiplerini gör; Savunma görünümünde seçtiğin fandoma ait olmayan pikselleri anında tespit et. İl hakimiyeti: <b>+5.000</b>, tam bölge hakimiyeti: <b>+25.000</b>.</p>
+              <div class="reward-line"><strong>+25.000</strong><span>Tam bölge hakimiyeti bonusu</span></div>
+            </div>
+          </section>
+
+          <section class="panel-card province-focus-card">
+            <div class="panel-title-row"><div class="panel-title">İL DURUMU</div><span class="tiny-note" id="provinceCode">—</span></div>
+            <div id="provinceSpotlight" class="province-spotlight"><div class="province-empty">Haritada bir ilin üzerine gel.</div></div>
+          </section>
+
+          <section class="panel-card progression-card">
+            <div class="panel-title-row"><div class="panel-title">PROFİL & İLERLEME</div><span class="tiny-note" id="streakBadge">0 GÜN SERİ</span></div>
+            <div class="progression-profile">
+              <div class="progression-avatar" id="progressionAvatar">F</div>
+              <div class="progression-copy"><strong id="progressionName">guest</strong><small id="progressionTeam">Fandom seçilmedi</small></div>
+              <strong class="level-pill" id="levelPill">LV 1</strong>
+            </div>
+            <div class="xp-line"><div class="xp-line-head"><span id="xpLabel">0 / 250 XP</span><span id="xpPercent">0%</span></div><div class="xp-track"><div id="xpFill"></div></div></div>
+            <div class="daily-title">GÜNLÜK GÖREVLER <span id="dailyResetText">bugün</span></div>
+            <div class="daily-missions" id="dailyMissions"></div>
+          </section>
+
+          <section class="panel-card attack-center-card">
+            <div class="panel-title-row"><div class="panel-title">SAVUNMA MERKEZİ</div><span class="live-badge">5 DK</span></div>
+            <div class="attack-summary-grid">
+              <div class="attack-metric"><small>SON 5 DK SALDIRI</small><strong id="recentAttackCount">0</strong></div>
+              <div class="attack-metric"><small>EN SICAK İL</small><strong id="hotProvince">—</strong></div>
+            </div>
+            <div class="attack-actions">
+              <button class="defense-action-btn" id="nextForeignBtn">SONRAKİ YABANCI PİKSEL</button>
+              <button class="defense-action-btn" id="heatmapToggleBtn">ISI HARİTASI: KAPALI</button>
+            </div>
+            <div class="attack-feed" id="attackFeed"><div class="log-empty">Bu oturumda henüz bir fandom başka bir fandomun pikselini ele geçirmedi.</div></div>
+          </section>
+
+          <section class="panel-card">
+            <div class="panel-title-row"><div class="panel-title">BÖLGE SAVAŞLARI</div><span class="tiny-note">7 coğrafi bölge</span></div>
+            <div class="region-board" id="regionBoard"></div>
+          </section>
+
+          <section class="panel-card">
+            <div class="panel-title">FANDOM LİDERLİĞİ</div>
+            <div class="leaderboard" id="leaderboard"></div>
+          </section>
+
+          <section class="panel-card">
+            <div class="panel-title">SAVAŞ GÜNLÜĞÜ</div>
+            <div class="battle-log" id="battleLog"><div class="log-empty">Henüz yeni bir il veya bölge ele geçirilmedi.</div></div>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="confirm-modal hidden" id="confirmModal">
+    <div class="confirm-card">
+      <div class="modal-kicker">FANVERSE PIXEL DROP</div>
+      <h3>Piksel yerleştirilsin mi?</h3>
+      <p id="confirmText"></p>
+      <div class="confirm-meta" id="confirmMeta"></div>
+      <div class="confirm-preview" id="confirmPreview"></div>
+      <div class="confirm-actions">
+        <button id="cancelPlaceBtn" class="secondary-btn">Vazgeç</button>
+        <button id="confirmPlaceBtn" class="place-btn small">Yerleştir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-modal hidden" id="profileModal">
+    <div class="profile-modal-card">
+      <div class="modal-kicker">FANVERSE PROFİLİ</div>
+      <h3>Oyuncu profilin</h3>
+      <p>V9, Supabase yapılandırıldığında gerçek hesaba bağlanır. Yapılandırma yoksa tarayıcıda demo profil ve kilitli fandom ile çalışır.</p>
+      <label class="profile-field"><span>KULLANICI ADI</span><input id="profileNameInput" maxlength="18" placeholder="guest" /></label>
+      <div class="profile-modal-stats">
+        <div><small>SEVİYE</small><strong id="modalLevel">1</strong></div>
+        <div><small>TOPLAM XP</small><strong id="modalXp">0</strong></div>
+        <div><small>YERLEŞTİRİLEN</small><strong id="modalPlaced">0</strong></div>
+        <div><small>SERİ</small><strong id="modalStreak">0 gün</strong></div>
+      </div>
+      <div class="confirm-actions"><button id="closeProfileBtn" class="secondary-btn">Kapat</button><button id="saveProfileBtn" class="place-btn small">Kaydet</button></div>
+    </div>
+  </div>
+
+
+  <div class="auth-modal hidden" id="authModal">
+    <div class="auth-modal-card">
+      <div class="modal-kicker">FANVERSE ACCOUNT</div>
+      <h3>Hesabına giriş yap</h3>
+      <p id="authModeText">Supabase etkinse e-posta ve şifreyle giriş yapabilir veya hesap oluşturabilirsin.</p>
+      <label class="profile-field"><span>E-POSTA</span><input id="authEmail" type="email" autocomplete="email" placeholder="mail@ornek.com" /></label>
+      <label class="profile-field"><span>ŞİFRE</span><input id="authPassword" type="password" minlength="6" autocomplete="current-password" placeholder="En az 6 karakter" /></label>
+      <div class="auth-status" id="authStatus"></div>
+      <div class="confirm-actions"><button id="closeAuthBtn" class="secondary-btn">Kapat</button><button id="signUpBtn" class="secondary-btn">Kayıt Ol</button><button id="signInBtn" class="place-btn small">Giriş Yap</button></div>
+    </div>
+  </div>
+
+  <div class="team-lock-modal hidden" id="teamLockModal">
+    <div class="team-lock-card">
+      <div class="modal-kicker">SEZON 01 · FANDOM SEÇİMİ</div>
+      <h3>Etkinlik takımını seç</h3>
+      <p>Bu seçim <b>etkinlik sona erene kadar değiştirilemez.</b> Artwork içinde istediğin rengi kullanabilirsin; fakat bıraktığın her piksel seçtiğin fandomun hakimiyetine yazılır.</p>
+      <div class="onboarding-teams" id="onboardingTeams"></div>
+      <div class="team-lock-warning" id="teamLockWarning">Bir fandom seç ve aşağıdan onayla.</div>
+      <div class="confirm-actions"><button id="closeTeamLockBtn" class="secondary-btn">Şimdilik kapat</button><button id="confirmTeamLockBtn" class="place-btn small" disabled>TAKIMI KİLİTLE</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
