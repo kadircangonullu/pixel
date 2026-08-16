@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="FANVERSE Türkiye — fandomların şehir ve bölge hakimiyeti için piksel savaşı." />
-  <meta name="theme-color" content="#07111f" />
   <title>FANVERSE — Türkiye Fandom Savaşları</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -54,7 +52,7 @@
       <div class="content">
         <section class="canvas-section">
           <div class="canvas-header">
-            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V16</span></div>
+            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V18.1</span></div>
             <div class="canvas-tools">
               <div class="view-switch" aria-label="Harita görünümü">
                 <button class="view-btn" data-view="artwork">ARTWORK</button>
@@ -87,7 +85,42 @@
           </div>
         </section>
 
-        <aside class="right-panel">
+        <aside class="right-panel" id="rightPanel">
+          <div class="mobile-panel-head mobile-only">
+            <div><small>MOBİL KONTROL MERKEZİ</small><strong>Tüm masaüstü panelleri</strong></div>
+            <button id="closeMobilePanelBtn" type="button" aria-label="Paneli kapat">×</button>
+          </div>
+
+          <section class="panel-card mobile-only mobile-live-stats">
+            <div class="panel-title-row"><div class="panel-title">CANLI İSTATİSTİKLER</div><span class="live-badge">CANLI</span></div>
+            <div class="mobile-stat-grid">
+              <div><small>SON 2 DK AKTİF</small><strong id="mobileOnlineCount">—</strong></div>
+              <div><small>BUGÜN PİKSEL</small><strong id="mobilePixelCount">—</strong></div>
+              <div><small>SEZON PİKSEL</small><strong id="mobileSeasonPixelCount">—</strong></div>
+              <div><small>SEZON OYUNCU</small><strong id="mobileSeasonPlayerCount">—</strong></div>
+              <div><small>OYUN ALANI</small><strong id="mobilePlayableCount">—</strong></div>
+              <div><small>KONTROL EDİLEN İL</small><strong id="mobileProvinceCount">—</strong></div>
+              <div><small>TAM BÖLGE</small><strong id="mobileSecuredCount">—</strong></div>
+            </div>
+          </section>
+
+          <section class="panel-card mobile-only">
+            <div class="panel-title-row"><div class="panel-title">FANDOMLAR</div><span class="tiny-note">7 takım</span></div>
+            <div class="mobile-team-list" id="mobileTeamList"></div>
+          </section>
+
+          <section class="panel-card mobile-only mobile-shortcuts">
+            <div class="panel-title">HIZLI ERİŞİM</div>
+            <div class="mobile-shortcut-grid">
+              <button id="mobileGuideBtn" type="button">REHBER</button>
+              <button id="mobileSeasonsBtn" type="button">SEZONLAR</button>
+              <button id="mobileHistoryBtn" type="button">GEÇMİŞ</button>
+              <button id="mobileNotificationsBtn" class="account-only" type="button">BİLDİRİMLER</button>
+              <button id="mobileTeamCenterBtn" class="account-only" type="button">TAKIM MERKEZİ</button>
+              <a id="mobileAdminLink" class="account-only hidden" href="admin.html">ADMIN</a>
+            </div>
+          </section>
+
           <section class="panel-card event-panel">
             <div class="panel-title-row"><div class="panel-title">SEZON ETKİNLİĞİ</div><span class="live-badge" id="seasonStatusBadge">YÜKLENİYOR</span></div>
             <div class="event-card">
@@ -301,7 +334,7 @@
     </div>
   </div>
 
-  <nav class="mobile-nav" id="mobileNav"><button data-mobile="map">⌂<span>Harita</span></button><button data-mobile="ownership">◆<span>Hakimiyet</span></button><button data-mobile="team" class="account-only">⚔<span>Takım</span></button><button data-mobile="history">◷<span>Geçmiş</span></button><button data-mobile="account" class="account-only">●<span>Profil</span></button></nav>
+  <nav class="mobile-nav" id="mobileNav"><button data-mobile="map">⌂<span>Harita</span></button><button data-mobile="panel">▦<span>Paneller</span></button><button data-mobile="team" class="account-only">⚔<span>Takım</span></button><button data-mobile="history">◷<span>Geçmiş</span></button><button data-mobile="account" class="account-only">●<span>Profil</span></button></nav>
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>

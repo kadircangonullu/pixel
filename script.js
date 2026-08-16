@@ -2209,3 +2209,39 @@ window.addEventListener("error",event=>{
   if(event?.error) console.error("V18 runtime error",event.error);
 });
 if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok. Canlı veriler geçici olarak güncellenemiyor.");
+
+// V18.1 · Mobile parity helpers
+(function initMobileParity(){
+  const panel = document.getElementById("rightPanel");
+  const closeBtn = document.getElementById("closeMobilePanelBtn");
+  const mobilePanelBtn = document.querySelector('[data-mobile="panel"]');
+  const mirrorPairs = [
+    ["onlineCount","mobileOnlineCount"],["pixelCount","mobilePixelCount"],["seasonPixelCount","mobileSeasonPixelCount"],
+    ["seasonPlayerCount","mobileSeasonPlayerCount"],["playableCount","mobilePlayableCount"],["provinceCount","mobileProvinceCount"],["securedCount","mobileSecuredCount"]
+  ];
+  function syncMobilePublicStats(){
+    for(const [srcId,dstId] of mirrorPairs){const src=document.getElementById(srcId),dst=document.getElementById(dstId);if(src&&dst)dst.textContent=src.textContent;}
+    const list=document.getElementById("mobileTeamList");
+    if(list){
+      list.innerHTML=teams.map(team=>`<div class="mobile-team-copy"><i style="background:${team.color}"></i><strong>${team.name}</strong><small>${Number(team.points||0).toLocaleString("tr-TR")} puan · ${Number(team.capturedProvinces||0)} il</small></div>`).join("");
+    }
+    const desktopAdmin=document.getElementById("adminPanelBtn"),mobileAdmin=document.getElementById("mobileAdminLink");
+    if(mobileAdmin&&desktopAdmin) mobileAdmin.classList.toggle("hidden",desktopAdmin.classList.contains("hidden")||!authUser);
+  }
+  function openMobilePanel(){if(!panel)return;syncMobilePublicStats();panel.classList.add("mobile-open");mobilePanelBtn?.classList.add("active");document.body.classList.add("mobile-panel-open");}
+  function closeMobilePanel(){panel?.classList.remove("mobile-open");mobilePanelBtn?.classList.remove("active");document.body.classList.remove("mobile-panel-open");}
+  mobilePanelBtn?.addEventListener("click",openMobilePanel);
+  closeBtn?.addEventListener("click",closeMobilePanel);
+  document.getElementById("mobileGuideBtn")?.addEventListener("click",()=>{closeMobilePanel();openGuide();});
+  document.getElementById("mobileSeasonsBtn")?.addEventListener("click",()=>{closeMobilePanel();openSeasonArchive();});
+  document.getElementById("mobileHistoryBtn")?.addEventListener("click",()=>{closeMobilePanel();openHistoryModal();});
+  document.getElementById("mobileNotificationsBtn")?.addEventListener("click",()=>{closeMobilePanel();openNotifications();});
+  document.getElementById("mobileTeamCenterBtn")?.addEventListener("click",()=>{closeMobilePanel();openTeamCenter();});
+  document.querySelectorAll('.mobile-nav [data-mobile]:not([data-mobile="panel"])').forEach(btn=>btn.addEventListener("click",closeMobilePanel));
+  window.addEventListener("resize",()=>{if(window.innerWidth>700)closeMobilePanel();});
+  const obs=new MutationObserver(syncMobilePublicStats);
+  for(const [srcId] of mirrorPairs){const el=document.getElementById(srcId);if(el)obs.observe(el,{childList:true,characterData:true,subtree:true});}
+  const leaderboard=document.getElementById("leaderboard");if(leaderboard)obs.observe(leaderboard,{childList:true,subtree:true});
+  setInterval(syncMobilePublicStats,2000);
+  syncMobilePublicStats();
+})();

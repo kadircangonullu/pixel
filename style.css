@@ -102,3 +102,57 @@ body.spectator-mode #placePixelBtn{opacity:.65}
 :focus-visible{outline:2px solid #fff;outline-offset:3px;}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
 .connection-banner{position:fixed;z-index:99999;left:50%;top:14px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(8,15,28,.96);box-shadow:0 14px 45px rgba(0,0,0,.38);font-size:12px}.connection-banner.hidden{display:none}.connection-banner.offline{border-color:rgba(255,105,105,.5)}.connection-banner.reconnecting{border-color:rgba(255,207,66,.45)}.connection-banner button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;border-radius:8px;padding:7px 9px;cursor:pointer}.connection-banner button:hover{background:rgba(255,255,255,.12)}
+
+/* V18.1 · Mobile parity — desktopte görülen işlevlerin mobilde eksiksiz erişimi */
+.mobile-only{display:none!important}
+@media(max-width:700px){
+  body{padding-bottom:calc(64px + env(safe-area-inset-bottom));}
+  .content{height:calc(100vh - 58px - 64px - env(safe-area-inset-bottom));}
+
+  /* Cooldown artık mobilde gizlenmez. */
+  .pixel-controls{grid-template-columns:112px minmax(0,1fr)!important;gap:8px!important;padding:8px!important;}
+  .pixel-controls .cooldown{display:flex!important;min-height:46px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.025);opacity:1!important;pointer-events:auto!important;}
+  .pixel-controls .cooldown small{font-size:7px}.pixel-controls .cooldown strong{font-size:13px}
+  .pixel-controls .palette{grid-column:1/-1;grid-row:2;order:2;}
+  .pixel-controls #placePixelBtn{grid-column:2;grid-row:1;min-height:46px;}
+  body.spectator-mode .pixel-controls .cooldown{opacity:.45!important;pointer-events:none!important;}
+
+  /* Sağ masaüstü paneli mobil bottom-sheet olur; artık gizlenmez. */
+  .right-panel{
+    display:flex!important;position:fixed;z-index:1145;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom));
+    height:min(78vh,720px);padding:0 10px 18px;background:#070c15;border-top:1px solid rgba(255,255,255,.13);
+    border-radius:18px 18px 0 0;box-shadow:0 -22px 60px rgba(0,0,0,.58);overflow-y:auto;
+    transform:translateY(calc(100% + 80px));opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease;
+  }
+  .right-panel.mobile-open{transform:translateY(0);opacity:1;pointer-events:auto;}
+  .mobile-only{display:block!important}
+  .mobile-panel-head{position:sticky;top:0;z-index:5;display:flex!important;align-items:center;justify-content:space-between;margin:0 -10px 2px;padding:13px 14px;background:rgba(7,12,21,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(14px)}
+  .mobile-panel-head small,.mobile-panel-head strong{display:block}.mobile-panel-head small{font-size:7px;color:var(--muted);letter-spacing:.9px}.mobile-panel-head strong{font-size:12px;margin-top:2px}
+  .mobile-panel-head button{width:34px;height:34px;border:1px solid var(--border);border-radius:9px;background:#111827;color:#fff;font-size:21px}
+  .right-panel>.panel-card{flex:none;margin-top:8px}
+
+  .mobile-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .mobile-stat-grid>div{padding:10px;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.02)}
+  .mobile-stat-grid small,.mobile-stat-grid strong{display:block}.mobile-stat-grid small{font-size:7px;color:var(--muted);line-height:1.3}.mobile-stat-grid strong{font-size:13px;margin-top:4px}
+  .mobile-stat-grid>div:last-child{grid-column:1/-1}
+
+  .mobile-team-list{display:flex;flex-direction:column;gap:6px}
+  .mobile-team-copy{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.018)}
+  .mobile-team-copy i{width:8px;height:8px;border-radius:50%}.mobile-team-copy strong{font-size:10px}.mobile-team-copy small{font-size:7px;color:var(--muted);text-align:right}
+
+  .mobile-shortcut-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .mobile-shortcut-grid button,.mobile-shortcut-grid a{min-height:40px;display:grid;place-items:center;border:1px solid var(--border);border-radius:8px;background:#111827;color:#dce5f4;text-decoration:none;font-size:8px;font-weight:900;cursor:pointer}
+  .mobile-shortcut-grid button:active,.mobile-shortcut-grid a:active{background:#1a2538}
+
+  .mobile-nav{grid-template-columns:repeat(5,1fr)!important;height:calc(62px + env(safe-area-inset-bottom));}
+  body.spectator-mode .mobile-nav{grid-template-columns:repeat(3,1fr)!important;}
+  .mobile-nav button.active{color:#fff;background:rgba(255,75,155,.075)}
+
+  /* Paneller ve modallar küçük ekranda yatay taşmasın. */
+  .panel-card{min-width:0}.event-card h3{font-size:13px}.event-card p{font-size:9px}
+  .attack-actions{grid-template-columns:1fr!important}.region-row-top{align-items:flex-start}.region-leader{max-width:55%;text-align:right}
+  .leader-row{grid-template-columns:20px minmax(0,1fr) auto}.leader-score small{white-space:normal}
+  .progression-card .daily-missions{max-height:none}
+  .team-center-card,.notifications-card,.profile-modal-card,.season-modal-card,.history-card,.guide-card{width:100%!important;max-width:100%!important}
+  .toast{left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));max-width:none}
+}
