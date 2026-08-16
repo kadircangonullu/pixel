@@ -4,3 +4,9 @@
 /* V17 */
 #rolesList,#pixelHistoryList,#userHistoryList,#awardsAdminList{margin-top:12px;max-height:520px;overflow:auto}.ready{color:#4ce3a4}.not-ready{color:#ff6b7a}
 @media(max-width:760px){.admin-shell{display:block}.admin-sidebar{position:relative;width:auto;min-height:auto}.admin-sidebar nav{display:flex;overflow-x:auto;gap:6px;padding-bottom:8px}.admin-nav{min-width:max-content}.admin-main{margin-left:0}.admin-grid.two,.form-grid,.form-grid.three,.form-grid.four{grid-template-columns:1fr!important}.admin-topbar{align-items:flex-start;gap:10px}.admin-account{flex-wrap:wrap}.table-wrap{overflow-x:auto}}
+
+
+/* V18 · launch-ready polish */
+:focus-visible{outline:2px solid #fff;outline-offset:3px;}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
+.launch-health{margin-top:16px}.health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.health-item{padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.025)}.health-item small{display:block;opacity:.6;font-size:10px;margin-bottom:6px}.health-item strong{font-size:13px}.health-item strong.ok{color:#5ee6a8}.health-item strong.warn{color:#ffd166}.health-item strong.bad{color:#ff7272}@media(max-width:800px){.health-grid{grid-template-columns:1fr 1fr}}

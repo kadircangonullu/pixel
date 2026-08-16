@@ -65,8 +65,27 @@ async function loadDashboard(){
   const counts={}; (members||[]).forEach(m=>counts[m.team_id]=(counts[m.team_id]||0)+1); const max=Math.max(1,...Object.values(counts));
   $('teamDistribution').innerHTML=Object.keys(TEAM_NAMES).map(id=>`<div class="bar-item"><b>${TEAM_NAMES[id]}</b><div class="bar-track"><div class="bar-fill" style="width:${((counts[id]||0)/max)*100}%;background:${TEAM_COLORS[id]}"></div></div><span>${counts[id]||0}</span></div>`).join('');
   $('recentActivity').innerHTML=(logs||[]).length?(logs||[]).map(l=>`<div class="feed-item"><strong>${esc(l.action)}</strong> · ${dt(l.created_at)}<br><span>${esc(JSON.stringify(l.details||{}))}</span></div>`).join(''):'<div class="feed-item">Henüz moderasyon işlemi yok.</div>';
+  await loadSystemHealth();
 }
 $('refreshDashboardBtn').onclick=loadDashboard;
+
+async function loadSystemHealth(){
+  if(!isAdminUser || !sb) return;
+  const wrap=$('systemHealth'); if(!wrap) return;
+  wrap.innerHTML='<div class="health-item"><small>SİSTEM</small><strong class="warn">Kontrol ediliyor…</strong></div>';
+  const {data,error}=await sb.rpc('fanverse_system_health',{p_event_slug:CFG.eventSlug||'season-01'});
+  if(error){wrap.innerHTML=`<div class="health-item"><small>DB / RPC</small><strong class="bad">${esc(error.message)}</strong></div>`;return;}
+  const r=Array.isArray(data)?data[0]:data;
+  const mapOk=Boolean(r?.battle_ready)&&Number(r?.province_count||0)===81&&Number(r?.run_count||0)>0;
+  const eventOk=Boolean(r?.event_found)&&r?.event_status!=='missing';
+  wrap.innerHTML=`
+    <div class="health-item"><small>SAVAŞ HARİTASI</small><strong class="${mapOk?'ok':'bad'}">${mapOk?'READY':`${Number(r?.province_count||0)}/81 · ${Number(r?.run_count||0)} run`}</strong></div>
+    <div class="health-item"><small>REALTIME / DB</small><strong class="ok">RPC OK · ${Number(r?.pixel_count||0).toLocaleString('tr-TR')} px</strong></div>
+    <div class="health-item"><small>AKTİF SEZON</small><strong class="${eventOk?'ok':'bad'}">${esc(r?.event_status||'missing')}</strong></div>
+    <div class="health-item"><small>SON PİKSEL</small><strong class="${r?.latest_pixel_at?'ok':'warn'}">${r?.latest_pixel_at?dt(r.latest_pixel_at):'Henüz yok'}</strong></div>`;
+}
+$('refreshHealthBtn').onclick=loadSystemHealth;
+
 
 async function loadSeasons(){
   const {data,error}=await sb.from('events').select('*').order('starts_at',{ascending:false}); if(error){toast(error.message);return;}

@@ -2164,3 +2164,48 @@ document.getElementById("openArchiveFromResultBtn")?.addEventListener("click", (
 renderWelcomeFandoms(); renderPalette(); renderTeams(); renderLeaderboard(); renderAttackCenter(); renderProgression(); updateCooldown(); updateSeasonUI(); requestAnimationFrame(resizeCanvas); loadTurkeyMap(); initAccountLayer();
 seasonUiTimer = setInterval(updateSeasonUI, 1000);
 setInterval(() => { pruneRecentAttacks(); if (recentAttacks.length) { heatmapDirty = true; renderAttackCenter(); scheduleDraw(); } }, 5000);
+
+// V18 · connection resilience / launch polish
+const connectionBanner = document.getElementById("connectionBanner");
+const connectionBannerText = document.getElementById("connectionBannerText");
+const connectionRetryBtn = document.getElementById("connectionRetryBtn");
+let v18ReconnectBusy = false;
+function setConnectionBanner(state, text){
+  if(!connectionBanner) return;
+  connectionBanner.classList.remove("hidden","offline","reconnecting");
+  if(state === "ok"){ connectionBanner.classList.add("hidden"); return; }
+  connectionBanner.classList.add(state === "offline" ? "offline" : "reconnecting");
+  if(connectionBannerText) connectionBannerText.textContent = text;
+}
+async function refreshAfterReconnect(){
+  if(v18ReconnectBusy || !navigator.onLine) return;
+  v18ReconnectBusy = true;
+  setConnectionBanner("reconnecting","Bağlantı geri geldi · FANVERSE verileri yenileniyor…");
+  try{
+    if(SUPABASE_ENABLED && supabaseClient){
+      const { data } = await supabaseClient.auth.getSession();
+      authUser = data.session?.user || null;
+      if(activeEvent && mapReady){
+        await syncRemotePixels();
+        await loadServerBattleState();
+      }
+      await refreshLiveStats();
+      if(authUser) await heartbeatPresence();
+    }
+    setConnectionBanner("ok","");
+  }catch(error){
+    console.error("V18 reconnect failed", error);
+    setConnectionBanner("reconnecting","Sunucuya yeniden bağlanılamadı. Tekrar deneyebilirsin.");
+  }finally{ v18ReconnectBusy = false; }
+}
+window.addEventListener("offline",()=>setConnectionBanner("offline","İnternet bağlantısı kesildi. Haritayı inceleyebilirsin; sunucu işlemleri bağlantı gelene kadar bekleyecek."));
+window.addEventListener("online",refreshAfterReconnect);
+connectionRetryBtn?.addEventListener("click",refreshAfterReconnect);
+window.addEventListener("unhandledrejection",event=>{
+  console.error("V18 unhandled promise", event.reason);
+  if(!navigator.onLine) setConnectionBanner("offline","Bağlantı kesildi. İnternet geldiğinde otomatik yeniden bağlanacağız.");
+});
+window.addEventListener("error",event=>{
+  if(event?.error) console.error("V18 runtime error",event.error);
+});
+if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok. Canlı veriler geçici olarak güncellenemiyor.");

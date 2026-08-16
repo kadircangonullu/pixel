@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
   <title>FANVERSE — Admin & Moderation</title>
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
   <div class="admin-shell">
     <aside class="admin-sidebar">
-      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V17</small></div></div>
+      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V18</small></div></div>
       <nav>
         <button class="admin-nav active" data-tab="dashboard">GENEL BAKIŞ</button>
         <button class="admin-nav" data-tab="seasons">SEZONLAR</button>
@@ -55,6 +56,7 @@
             <article class="panel"><div class="panel-head"><h3>Fandom dağılımı</h3><button id="refreshDashboardBtn">YENİLE</button></div><div id="teamDistribution" class="bars"></div></article>
             <article class="panel"><div class="panel-head"><h3>Son hareketler</h3></div><div id="recentActivity" class="feed"></div></article>
           </div>
+          <article class="panel launch-health"><div class="panel-head"><div><h3>Sistem sağlık kontrolü</h3><p class="muted">Yayın öncesi kritik Supabase bileşenlerini tek noktadan doğrula.</p></div><button id="refreshHealthBtn">KONTROL ET</button></div><div id="systemHealth" class="health-grid"><div class="health-item"><small>SAVAŞ HARİTASI</small><strong>—</strong></div><div class="health-item"><small>REALTIME / DB</small><strong>—</strong></div><div class="health-item"><small>AKTİF SEZON</small><strong>—</strong></div><div class="health-item"><small>SON PİKSEL</small><strong>—</strong></div></div></article>
         </section>
 
         <section class="admin-tab" data-panel="seasons">
