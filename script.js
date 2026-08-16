@@ -1051,6 +1051,9 @@ document.getElementById("confirmPlaceBtn").onclick = async () => {
     if (error) {
       if (error.message.includes("COOLDOWN")) showToast("Cooldown henüz bitmedi.");
       else if (error.message.includes("TEAM_REQUIRED")) openTeamOnboarding();
+      else if (error.message.includes("USER_BANNED")) showToast("Hesabın moderasyon nedeniyle geçici olarak piksel yerleştiremiyor.");
+      else if (error.message.includes("PROTECTED_ZONE_TEAM")) showToast("Bu korumalı alana yalnızca izin verilen fandom piksel koyabilir.");
+      else if (error.message.includes("PROTECTED_ZONE")) showToast("Bu alan moderasyon tarafından korumaya alınmış.");
       else showToast(`Piksel yerleştirilemedi: ${error.message}`);
       return;
     }
@@ -1375,7 +1378,7 @@ async function hydrateAccountFromSupabase() {
     player.totalPlaced = Number(profile.total_placed || 0);
     savePlayerProfile();
   }
-  renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI();
+  renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI(); await updateAdminPanelVisibility();
   if (mapReady) await syncRemotePixels(); else remoteSyncPending = true;
 }
 async function syncRemotePixels() {
@@ -1400,9 +1403,58 @@ function subscribeRealtimePixels() {
   if (!SUPABASE_ENABLED || !activeEvent || realtimePixelChannel) return;
   realtimePixelChannel = supabaseClient.channel(`fanverse-pixels-${activeEvent.id}`)
     .on("postgres_changes", { event:"*", schema:"public", table:"pixels", filter:`event_id=eq.${activeEvent.id}` }, payload => {
-      const row = payload.new; if (!row) return; applySyncedPixel(row, false); renderAll(); scheduleDraw();
+      if (payload.eventType === "DELETE") {
+        const oldRow = payload.old || {};
+        const x = Number(oldRow.x), y = Number(oldRow.y);
+        if (Number.isInteger(x) && Number.isInteger(y)) restoreBaseCell(x, y);
+      } else {
+        const row = payload.new; if (row) applySyncedPixel(row, false);
+      }
+      renderAll(); scheduleDraw();
     }).subscribe();
 }
+async function updateAdminPanelVisibility() {
+  const btn = document.getElementById("adminPanelBtn");
+  if (!btn) return;
+  btn.classList.add("hidden");
+  if (!SUPABASE_ENABLED || !authUser || !supabaseClient) return;
+  const { data, error } = await supabaseClient.rpc("is_admin");
+  if (!error && data === true) btn.classList.remove("hidden");
+}
+
+function restoreBaseCell(x, y) {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || !isLand(x, y)) return;
+  const i = idx(x, y);
+  const provinceName = provinceAt(x, y);
+  const currentOwnerId = ownerAt(x, y);
+  if (currentOwnerId) {
+    const counts = provinceOwnerCounts.get(provinceName);
+    if (counts) counts[currentOwnerId] = Math.max(0, (counts[currentOwnerId] || 0) - 1);
+    const currentTeam = teamById(currentOwnerId);
+    if (currentTeam) currentTeam.pixels = Math.max(0, currentTeam.pixels - 1);
+  }
+  const homeTeamId = HOME_PROVINCES[provinceName] || null;
+  if (homeTeamId) {
+    const team = teamById(homeTeamId);
+    const ownerIndex = teamIndexById.get(homeTeamId);
+    let paletteIndex = paletteColors.indexOf(team.color);
+    ownerGrid[i] = ownerIndex;
+    colorGrid[i] = PALETTE_OFFSET + paletteIndex;
+    const counts = provinceOwnerCounts.get(provinceName);
+    if (counts) counts[homeTeamId] = (counts[homeTeamId] || 0) + 1;
+    team.pixels++;
+  } else {
+    ownerGrid[i] = 0;
+    colorGrid[i] = (x * 17 + y * 11) % 43 === 0 ? MATERIAL_LAND_ALT : MATERIAL_LAND;
+  }
+  worldLayerCtx.fillStyle = MATERIAL_COLORS[colorGrid[i]];
+  worldLayerCtx.fillRect(x, y, 1, 1);
+  updateOwnershipCell(x, y);
+  miniMapDirty = true;
+  heatmapDirty = true;
+  evaluateProvinceCapture(provinceName);
+}
+
 async function initAccountLayer() {
   updateAuthChip();
   if (!SUPABASE_ENABLED) {
@@ -1417,7 +1469,7 @@ async function initAccountLayer() {
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     authUser = session?.user || null; updateAuthChip();
     if (authUser) await hydrateAccountFromSupabase();
-    else { lockedTeamId = null; selectedTeam = null; renderAll(); }
+    else { lockedTeamId = null; selectedTeam = null; document.getElementById("adminPanelBtn")?.classList.add("hidden"); renderAll(); }
   });
 }
 

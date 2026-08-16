@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FANVERSE — Admin & Moderation</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V11</small></div></div>
+      <nav>
+        <button class="admin-nav active" data-tab="dashboard">GENEL BAKIŞ</button>
+        <button class="admin-nav" data-tab="seasons">SEZONLAR</button>
+        <button class="admin-nav" data-tab="players">OYUNCULAR</button>
+        <button class="admin-nav" data-tab="pixels">PİKSELLER</button>
+        <button class="admin-nav" data-tab="zones">KORUMALI ALANLAR</button>
+        <button class="admin-nav" data-tab="logs">MODERASYON LOGU</button>
+      </nav>
+      <a class="back-link" href="index.html">← HARİTAYA DÖN</a>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div><h2 id="pageTitle">Genel Bakış</h2><p id="pageSubtitle">Sezon, kullanıcı ve moderasyon durumunu tek ekrandan yönet.</p></div>
+        <div class="admin-account"><span id="adminIdentity">Giriş bekleniyor</span><button id="adminSignOutBtn">ÇIKIŞ</button></div>
+      </header>
+
+      <section id="authGate" class="auth-gate">
+        <div class="auth-card">
+          <div class="kicker">YETKİLİ GİRİŞİ</div>
+          <h2>Admin paneli</h2>
+          <p>Bu panel yalnızca <code>admin_users</code> tablosunda kayıtlı hesaplar tarafından açılabilir.</p>
+          <label><span>E-POSTA</span><input id="adminEmail" type="email" placeholder="admin@example.com" /></label>
+          <label><span>ŞİFRE</span><input id="adminPassword" type="password" placeholder="••••••••" /></label>
+          <div id="adminAuthStatus" class="status"></div>
+          <button id="adminLoginBtn" class="primary">GİRİŞ YAP</button>
+        </div>
+      </section>
+
+      <div id="adminContent" class="hidden">
+        <section class="admin-tab active" data-panel="dashboard">
+          <div class="metric-grid">
+            <article><small>AKTİF SEZON</small><strong id="metricActiveSeason">—</strong><span id="metricSeasonState">—</span></article>
+            <article><small>TOPLAM OYUNCU</small><strong id="metricPlayers">0</strong><span>Kayıtlı profil</span></article>
+            <article><small>SEZON PİKSELİ</small><strong id="metricPixels">0</strong><span>DB üzerindeki aktif hücre</span></article>
+            <article><small>AKTİF BAN</small><strong id="metricBans">0</strong><span>Şu anda engelli hesap</span></article>
+          </div>
+          <div class="admin-grid two">
+            <article class="panel"><div class="panel-head"><h3>Fandom dağılımı</h3><button id="refreshDashboardBtn">YENİLE</button></div><div id="teamDistribution" class="bars"></div></article>
+            <article class="panel"><div class="panel-head"><h3>Son hareketler</h3></div><div id="recentActivity" class="feed"></div></article>
+          </div>
+        </section>
+
+        <section class="admin-tab" data-panel="seasons">
+          <div class="admin-grid two">
+            <article class="panel"><div class="panel-head"><h3>Yeni sezon oluştur</h3></div>
+              <div class="form-grid">
+                <label><span>SLUG</span><input id="newSeasonSlug" placeholder="season-02" /></label>
+                <label><span>AD</span><input id="newSeasonName" placeholder="FANVERSE Türkiye · Sezon 02" /></label>
+                <label><span>BAŞLANGIÇ</span><input id="newSeasonStart" type="datetime-local" /></label>
+                <label><span>BİTİŞ</span><input id="newSeasonEnd" type="datetime-local" /></label>
+                <label><span>DURUM</span><select id="newSeasonStatus"><option value="draft">draft</option><option value="active">active</option><option value="finished">finished</option></select></label>
+              </div>
+              <button id="createSeasonBtn" class="primary">SEZON OLUŞTUR</button>
+            </article>
+            <article class="panel"><div class="panel-head"><h3>Sezonlar</h3><button id="refreshSeasonsBtn">YENİLE</button></div><div id="seasonAdminList" class="list"></div></article>
+          </div>
+        </section>
+
+        <section class="admin-tab" data-panel="players">
+          <article class="panel"><div class="panel-head"><h3>Oyuncular</h3><button id="refreshPlayersBtn">YENİLE</button></div>
+            <div class="toolbar"><input id="playerSearch" placeholder="Kullanıcı adı veya UUID ara" /><button id="playerSearchBtn">ARA</button></div>
+            <div id="playersTable" class="table-wrap"></div>
+          </article>
+          <article class="panel compact"><h3>Ban / Ban kaldır</h3><div class="form-grid three">
+            <label><span>USER UUID</span><input id="banUserId" placeholder="uuid" /></label>
+            <label><span>SÜRE (SAAT)</span><input id="banHours" type="number" min="0" max="8760" value="24" /></label>
+            <label><span>SEBEP</span><input id="banReason" placeholder="spam / taciz / bot..." /></label>
+          </div><div class="inline-actions"><button id="banUserBtn" class="danger">BAN UYGULA</button><button id="unbanUserBtn">BAN KALDIR</button></div></article>
+        </section>
+
+        <section class="admin-tab" data-panel="pixels">
+          <article class="panel"><div class="panel-head"><h3>Son pikseller</h3><button id="refreshPixelsBtn">YENİLE</button></div><div id="pixelsTable" class="table-wrap"></div></article>
+          <article class="panel compact"><h3>Koordinattan piksel kaldır</h3><div class="form-grid four">
+            <label><span>SEZON</span><input id="deletePixelSeason" value="season-01" /></label>
+            <label><span>X</span><input id="deletePixelX" type="number" min="0" max="1439" /></label>
+            <label><span>Y</span><input id="deletePixelY" type="number" min="0" max="614" /></label>
+            <label><span>SEBEP</span><input id="deletePixelReason" placeholder="uygunsuz içerik" /></label>
+          </div><button id="deletePixelBtn" class="danger">PİKSELİ KALDIR</button></article>
+        </section>
+
+        <section class="admin-tab" data-panel="zones">
+          <div class="admin-grid two">
+            <article class="panel"><h3>Korumalı alan oluştur</h3><p class="muted">allowed team boşsa alan tamamen kilitlenir. Takım seçilirse yalnız o fandom piksel koyabilir.</p>
+              <div class="form-grid">
+                <label><span>SEZON</span><input id="zoneSeason" value="season-01" /></label>
+                <label><span>ETİKET</span><input id="zoneLabel" placeholder="Resmî CRUSH artwork" /></label>
+                <label><span>X1</span><input id="zoneX1" type="number" /></label><label><span>Y1</span><input id="zoneY1" type="number" /></label>
+                <label><span>X2</span><input id="zoneX2" type="number" /></label><label><span>Y2</span><input id="zoneY2" type="number" /></label>
+                <label><span>İZİNLİ TAKIM</span><select id="zoneTeam"><option value="">TAMAMEN KİLİTLİ</option><option value="crush">CRUSH</option><option value="manifest">MANIFEST</option><option value="aura">AURA</option><option value="karm6">KARM6</option><option value="mantra">MANTRA</option><option value="radikal">RADİKAL</option><option value="perma">PERMA</option></select></label>
+              </div><button id="createZoneBtn" class="primary">ALANI KORUMAYA AL</button>
+            </article>
+            <article class="panel"><div class="panel-head"><h3>Aktif korumalar</h3><button id="refreshZonesBtn">YENİLE</button></div><div id="zonesList" class="list"></div></article>
+          </div>
+        </section>
+
+        <section class="admin-tab" data-panel="logs">
+          <article class="panel"><div class="panel-head"><h3>Moderasyon logu</h3><button id="refreshLogsBtn">YENİLE</button></div><div id="logsTable" class="table-wrap"></div></article>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div id="adminToast" class="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
