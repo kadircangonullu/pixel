@@ -539,7 +539,7 @@ function rebuildBorderLayer() {
       if (right === pIndex && left === pIndex && down === pIndex && up === pIndex) continue;
       const coast = !right || !left || !down || !up;
       const o = idx(x,y) * 4;
-      d[o] = 71; d[o+1] = 85; d[o+2] = 105; d[o+3] = coast ? 215 : 138;
+      d[o] = 51; d[o+1] = 65; d[o+2] = 85; d[o+3] = coast ? 238 : 176;
     }
   }
   borderLayerCtx.putImageData(borderImage, 0, 0);
@@ -906,6 +906,59 @@ function renderLeaderboard() {
   document.getElementById("leaderboard").innerHTML = sorted.map((team, index) => `<div class="leader-row v13"><span>${index + 1}</span><div class="leader-team"><span class="leader-dot" style="background:${team.color}"></span><span class="leader-team-text">${team.name}</span></div><span class="leader-score"><strong>${team.points.toLocaleString("tr-TR")}</strong><small>${team.pixels.toLocaleString("tr-TR")} px · +${Number(team.provinceBonus||0).toLocaleString("tr-TR")} il · +${Number(team.regionBonus||0).toLocaleString("tr-TR")} bölge</small></span></div>`).join("");
 }
 
+function playerRankRow(row) {
+  const team = teamById(row.team_id);
+  const rank = Number(row.rank || 0);
+  return `<div class="player-rank-row">
+    <span class="player-rank-pos">${rank || "—"}</span>
+    <div class="player-rank-main">
+      <div class="player-rank-name"><i style="background:${team?.color || "#94a3b8"}"></i><strong>${escapeHtml(row.username || "fan")}</strong><span>${team?.name || row.team_id || "—"}</span></div>
+      <small>${Number(row.placements || 0).toLocaleString("tr-TR")} piksel · ${Number(row.enemy_pixels_taken || 0).toLocaleString("tr-TR")} rakip · ${Number(row.unique_provinces || 0)} il</small>
+    </div>
+    <strong class="player-rank-score">${Number(row.score || 0).toLocaleString("tr-TR")}<small>puan</small></strong>
+  </div>`;
+}
+
+async function loadPublicPlayerLeaderboard(teamId = null, targetId = "globalPlayerLeaderboard") {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  if (!SUPABASE_ENABLED || !supabaseClient) {
+    target.innerHTML = `<div class="log-empty">Supabase bağlı değil.</div>`;
+    return;
+  }
+  target.innerHTML = `<div class="log-empty">Liderlik verileri yükleniyor…</div>`;
+  const { data, error } = await supabaseClient.rpc("public_player_leaderboard", {
+    p_event_slug: EVENT_SLUG,
+    p_team_id: teamId,
+    p_page: 1,
+    p_page_size: 10
+  });
+  if (error) {
+    console.warn("V20 player leaderboard unavailable", error);
+    target.innerHTML = `<div class="log-empty">Oyuncu liderliği için supabase-v20.sql migration'ını çalıştır.</div>`;
+    return;
+  }
+  target.innerHTML = (data || []).map(playerRankRow).join("") || `<div class="log-empty">Henüz sıralanacak oyuncu yok.</div>`;
+}
+
+async function refreshPublicPlayerLeaderboards() {
+  const teamSelect = document.getElementById("rankingTeamSelect");
+  if (teamSelect && authUser && lockedTeamId) teamSelect.value = lockedTeamId;
+  const teamId = teamSelect?.value || lockedTeamId || "crush";
+  const detail = document.getElementById("teamLeaderboardDetailLink");
+  if (detail) detail.href = `leaderboard.html?mode=team&team=${encodeURIComponent(teamId)}`;
+  await Promise.all([
+    loadPublicPlayerLeaderboard(null, "globalPlayerLeaderboard"),
+    loadPublicPlayerLeaderboard(teamId, "teamPlayerLeaderboard")
+  ]);
+}
+document.getElementById("rankingTeamSelect")?.addEventListener("change", async e => {
+  const teamId = e.target.value;
+  const detail = document.getElementById("teamLeaderboardDetailLink");
+  if (detail) detail.href = `leaderboard.html?mode=team&team=${encodeURIComponent(teamId)}`;
+  await loadPublicPlayerLeaderboard(teamId, "teamPlayerLeaderboard");
+});
+
 function updateGlobalStats() {
   const live = serverLiveStats;
   const onlineEl = document.getElementById("onlineCount");
@@ -996,7 +1049,7 @@ function draw() {
   if (selectedPixel) {
     const x = (selectedPixel.x - camera.x) * ps, y = (selectedPixel.y - camera.y) * ps;
     ctx.globalAlpha = .68; ctx.fillStyle = selectedColor; ctx.fillRect(x,y,ps,ps); ctx.globalAlpha = 1;
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(x,y,ps,ps);
+    ctx.strokeStyle = "#172033"; ctx.lineWidth = 2; ctx.strokeRect(x,y,ps,ps);
   }
   drawMiniMap();
   lastFrameMs = performance.now() - frameStart;
@@ -1241,7 +1294,7 @@ document.querySelectorAll(".nav-link").forEach(btn => btn.addEventListener("clic
   document.querySelectorAll(".nav-link").forEach(x => x.classList.remove("active")); btn.classList.add("active");
   const target = btn.dataset.target;
   if (target === "regions") document.querySelector(".region-board")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  else if (target === "ranking") document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  else if (target === "ranking") document.getElementById("playerRankingCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
   else if (target === "teamcenter") openTeamCenter();
   else if (target === "seasons") openSeasonArchive();
   else if (target === "history") openHistoryModal();
@@ -1618,6 +1671,7 @@ async function hydrateAccountFromSupabase() {
   }
   await loadServerProfileOverview();
   await loadV16Systems();
+  await refreshPublicPlayerLeaderboards();
   renderAll(); updateCooldown(); updateAuthChip(); updateSeasonUI(); await updateAdminPanelVisibility();
   if (mapReady) { await ensureServerBattleMap(); await syncRemotePixels(); await loadServerBattleState(); subscribeRealtimeBattleState(); await refreshLiveStats(); } else remoteSyncPending = true;
 }
@@ -1787,6 +1841,7 @@ async function initAccountLayer() {
   activeEvent = eventData || null;
   updateSeasonUI();
   await refreshLiveStats();
+  await refreshPublicPlayerLeaderboards();
 
   const { data } = await supabaseClient.auth.getSession();
   authUser = data.session?.user || null;
@@ -2247,6 +2302,7 @@ async function refreshAfterReconnect(){
         await loadServerBattleState();
       }
       await refreshLiveStats();
+      await refreshPublicPlayerLeaderboards();
       if(authUser) await heartbeatPresence();
     }
     setConnectionBanner("ok","");

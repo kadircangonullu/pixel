@@ -52,7 +52,7 @@
       <div class="content">
         <section class="canvas-section">
           <div class="canvas-header">
-            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V19</span></div>
+            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V20</span></div>
             <div class="canvas-tools">
               <div class="view-switch" aria-label="Harita görünümü">
                 <button class="view-btn" data-view="artwork">ARTWORK</button>
@@ -177,6 +177,41 @@
           <section class="panel-card">
             <div class="panel-title">FANDOM LİDERLİĞİ</div>
             <div class="leaderboard" id="leaderboard"></div>
+          </section>
+
+          <section class="panel-card player-ranking-card" id="playerRankingCard">
+            <div class="panel-title-row">
+              <div>
+                <div class="panel-title">OYUNCU LİDERLİĞİ</div>
+                <span class="tiny-note">Genel · en yüksek puanlı ilk 10</span>
+              </div>
+              <a class="panel-detail-link" href="leaderboard.html?mode=global">TÜMÜNÜ GÖR</a>
+            </div>
+            <div class="player-leaderboard" id="globalPlayerLeaderboard">
+              <div class="log-empty">Liderlik verileri yükleniyor…</div>
+            </div>
+          </section>
+
+          <section class="panel-card player-ranking-card">
+            <div class="panel-title-row">
+              <div>
+                <div class="panel-title">FANDOM İÇİ LİDERLER</div>
+                <span class="tiny-note">Takım bazında ilk 10 oyuncu</span>
+              </div>
+              <a class="panel-detail-link" id="teamLeaderboardDetailLink" href="leaderboard.html?mode=team&team=crush">DETAY</a>
+            </div>
+            <select class="ranking-team-select" id="rankingTeamSelect" aria-label="Fandom liderlik takımı">
+              <option value="crush">CRUSH</option>
+              <option value="manifest">MANIFEST</option>
+              <option value="aura">AURA</option>
+              <option value="karm6">KARM6</option>
+              <option value="mantra">MANTRA</option>
+              <option value="radikal">RADİKAL</option>
+              <option value="perma">PERMA</option>
+            </select>
+            <div class="player-leaderboard" id="teamPlayerLeaderboard">
+              <div class="log-empty">Fandom sıralaması yükleniyor…</div>
+            </div>
           </section>
 
           <section class="panel-card">

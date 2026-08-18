@@ -105,11 +105,26 @@ async function loadPlayers(){
   const [{data,error},{data:bans}]=await Promise.all([query,sb.from('user_moderation').select('user_id,banned_until,reason')]); if(error){toast(error.message);return;}
   const banMap=new Map((bans||[]).map(b=>[b.user_id,b]));
   $('playersTable').innerHTML=`<table class="admin-table"><thead><tr><th>Kullanıcı</th><th>UUID</th><th>XP</th><th>Piksel</th><th>Durum</th><th></th></tr></thead><tbody>${(data||[]).map(p=>{const b=banMap.get(p.id),active=b?.banned_until&&new Date(b.banned_until)>new Date();return `<tr><td><strong>${esc(p.username)}</strong></td><td>${esc(p.id)}</td><td>${Number(p.xp||0).toLocaleString('tr-TR')}</td><td>${Number(p.total_placed||0).toLocaleString('tr-TR')}</td><td><span class="pill ${active?'banned':'active'}">${active?`BAN · ${dt(b.banned_until)}`:'AKTİF'}</span></td><td><button data-ban-target="${p.id}">SEÇ</button></td></tr>`}).join('')}</tbody></table>`;
-  document.querySelectorAll('[data-ban-target]').forEach(b=>b.onclick=()=>{$('banUserId').value=b.dataset.banTarget;window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});});
+  document.querySelectorAll('[data-ban-target]').forEach(b=>b.onclick=()=>{const id=b.dataset.banTarget;$('banUserId').value=id;if($('deleteUserId'))$('deleteUserId').value=id;document.querySelector('.danger-zone-panel')?.scrollIntoView({behavior:'smooth',block:'center'});});
 }
 $('refreshPlayersBtn').onclick=loadPlayers; $('playerSearchBtn').onclick=loadPlayers;
 async function setBan(hours){const id=$('banUserId').value.trim();if(!id){toast('User UUID gerekli.');return;}const {error}=await sb.rpc('admin_set_user_ban',{p_user_id:id,p_hours:hours,p_reason:$('banReason').value.trim()||null});if(error)toast(error.message);else{toast(hours?'Ban uygulandı.':'Ban kaldırıldı.');loadPlayers();loadDashboard();}}
 $('banUserBtn').onclick=()=>setBan(Math.max(1,Number($('banHours').value||24))); $('unbanUserBtn').onclick=()=>setBan(0);
+
+$('deleteUserBtn').onclick=async()=>{
+  const id=$('deleteUserId').value.trim(), confirmText=$('deleteUserConfirm').value.trim().toLocaleUpperCase('tr-TR'), reason=$('deleteUserReason').value.trim();
+  if(!id){toast('Silinecek kullanıcı UUID gerekli.');return;}
+  if(confirmText!=='SIL'){toast('Kalıcı silme için ONAY METNİ alanına SIL yaz.');return;}
+  if(!confirm('Bu hesap Supabase Auth dahil KALICI olarak silinecek. Mevcut harita pikselleri anonim şekilde korunacak. Devam edilsin mi?'))return;
+  const btn=$('deleteUserBtn');btn.disabled=true;
+  const {data,error}=await sb.rpc('admin_delete_user',{p_user_id:id,p_reason:reason||null});
+  btn.disabled=false;
+  if(error){
+    const map={SELF_DELETE_BLOCKED:'Kendi admin hesabını bu panelden silemezsin.',OWNER_PROTECTED:'Owner hesabı silinemez.',OWNER_REQUIRED_FOR_ADMIN_DELETE:'Başka bir admin hesabını yalnız owner silebilir.',ADMIN_DELETE_REQUIRED:'Kalıcı kullanıcı silme için admin/owner yetkisi gerekli.',USER_NOT_FOUND:'Kullanıcı bulunamadı.'};
+    toast(map[error.message]||error.message);return;
+  }
+  if(data){toast('Üye kalıcı olarak silindi; mevcut map pikselleri anonimleştirildi.');$('deleteUserId').value='';$('deleteUserConfirm').value='';$('deleteUserReason').value='';loadPlayers();loadDashboard();}
+};
 
 async function loadPixels(){
   const ev=await getActiveEvent(); if(!ev){$('pixelsTable').innerHTML='Aktif sezon bulunamadı.';return;}

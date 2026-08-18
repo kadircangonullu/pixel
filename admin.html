@@ -96,6 +96,22 @@
             <label><span>SÜRE (SAAT)</span><input id="banHours" type="number" min="0" max="8760" value="24" /></label>
             <label><span>SEBEP</span><input id="banReason" placeholder="spam / taciz / bot..." /></label>
           </div><div class="inline-actions"><button id="banUserBtn" class="danger">BAN UYGULA</button><button id="unbanUserBtn">BAN KALDIR</button></div></article>
+
+          <article class="panel compact danger-zone-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Üyeyi kalıcı sil</h3>
+                <p class="muted">Hesap Supabase Auth dahil kalıcı olarak silinir. Haritadaki mevcut pikseller korunur ve anonimleşir. Bu işlem geri alınamaz.</p>
+              </div>
+              <span class="danger-zone-badge">DANGER ZONE</span>
+            </div>
+            <div class="form-grid three">
+              <label><span>USER UUID</span><input id="deleteUserId" placeholder="Silinecek kullanıcı UUID" /></label>
+              <label><span>ONAY METNİ</span><input id="deleteUserConfirm" placeholder="SIL" /></label>
+              <label><span>SEBEP</span><input id="deleteUserReason" placeholder="istek / spam / sahte hesap..." /></label>
+            </div>
+            <button id="deleteUserBtn" class="danger">ÜYEYİ KALICI SİL</button>
+          </article>
         </section>
 
 

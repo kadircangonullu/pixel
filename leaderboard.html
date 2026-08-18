@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FANVERSE — Oyuncu Liderliği</title>
+  <link rel="stylesheet" href="leaderboard.css" />
+</head>
+<body>
+  <header class="leader-topbar">
+    <a class="brand" href="index.html"><span>◆</span><div><strong>FANVERSE</strong><small>Oyuncu liderliği</small></div></a>
+    <a class="back" href="index.html">← HARİTAYA DÖN</a>
+  </header>
+
+  <main class="leader-page">
+    <section class="hero-card">
+      <div>
+        <span class="eyebrow">SEZON 01 · CANLI SIRALAMA</span>
+        <h1>Oyuncu Liderlik Panosu</h1>
+        <p>Genel sıralamayı veya bir fandomun kendi içindeki en yüksek puanlı oyuncularını incele. Oyuncu puanı server-side profil XP değeridir.</p>
+      </div>
+      <div class="score-note"><small>PUAN SİSTEMİ</small><strong>XP = oyuncu puanı</strong><span>Piksel katkıları ve server-side görev ödülleri XP'yi büyütür.</span></div>
+    </section>
+
+    <section class="leader-controls">
+      <div class="mode-tabs" role="tablist">
+        <button id="globalModeBtn" class="active" type="button">GENEL</button>
+        <button id="teamModeBtn" type="button">FANDOM İÇİ</button>
+      </div>
+      <label id="teamFilterWrap" class="team-filter hidden"><span>FANDOM</span><select id="teamFilter">
+        <option value="crush">CRUSH</option><option value="manifest">MANIFEST</option><option value="aura">AURA</option><option value="karm6">KARM6</option><option value="mantra">MANTRA</option><option value="radikal">RADİKAL</option><option value="perma">PERMA</option>
+      </select></label>
+    </section>
+
+    <section class="ranking-shell">
+      <div class="ranking-head"><div><small id="rankingKicker">GENEL SIRALAMA</small><h2 id="rankingTitle">Tüm oyuncular</h2></div><span id="rankingCount">— oyuncu</span></div>
+      <div id="rankingList" class="ranking-list"><div class="empty">Liderlik verileri yükleniyor…</div></div>
+      <div class="pagination"><button id="prevPageBtn">← ÖNCEKİ</button><span id="pageText">1 / 1</span><button id="nextPageBtn">SONRAKİ →</button></div>
+    </section>
+  </main>
+  <div id="leaderToast" class="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="leaderboard.js"></script>
+</body>
+</html>
