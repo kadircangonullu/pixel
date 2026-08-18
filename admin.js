@@ -84,7 +84,7 @@ async function loadSystemHealth(){
     <div class="health-item"><small>AKTİF SEZON</small><strong class="${eventOk?'ok':'bad'}">${esc(r?.event_status||'missing')}</strong></div>
     <div class="health-item"><small>SON PİKSEL</small><strong class="${r?.latest_pixel_at?'ok':'warn'}">${r?.latest_pixel_at?dt(r.latest_pixel_at):'Henüz yok'}</strong></div>`;
 }
-$('refreshHealthBtn').onclick=loadSystemHealth;
+if ($('refreshHealthBtn')) $('refreshHealthBtn').onclick = loadSystemHealth;
 
 
 async function loadSeasons(){
