@@ -52,7 +52,7 @@
       <div class="content">
         <section class="canvas-section">
           <div class="canvas-header">
-            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V18.1</span></div>
+            <div class="live-title"><span class="live-dot"></span><strong>TÜRKİYE · 81 İL · CANLI FANDOM HARİTASI</strong><span class="season-chip" id="seasonChip">SEZON 01 · V19</span></div>
             <div class="canvas-tools">
               <div class="view-switch" aria-label="Harita görünümü">
                 <button class="view-btn" data-view="artwork">ARTWORK</button>
@@ -215,6 +215,7 @@
         <span id="welcomeSeasonState">YÜKLENİYOR</span>
       </div>
       <div class="welcome-fandoms" id="welcomeFandoms"></div>
+      <div class="welcome-auth-note" id="welcomeAuthNote" aria-live="polite"></div>
       <div class="welcome-actions">
         <button class="welcome-primary" id="welcomeLoginBtn">GİRİŞ YAP</button>
         <button class="welcome-secondary" id="welcomeSignupBtn">HESAP OLUŞTUR</button>
@@ -327,8 +328,9 @@
 
   <div class="history-modal hidden" id="historyModal">
     <div class="history-card">
-      <div class="guide-head"><div><div class="modal-kicker">HARİTA GEÇMİŞİ</div><h2>Timelapse</h2><p>V17 sonrasında kaydedilen piksel değişimlerini zaman içinde oynat.</p></div><button id="closeHistoryBtn" aria-label="Kapat">×</button></div>
-      <div class="history-controls"><button class="secondary-btn" id="loadHistoryBtn">GEÇMİŞİ YÜKLE</button><button class="place-btn small" id="playHistoryBtn" disabled>▶ OYNAT</button><select id="historySpeed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option><option value="8">8x</option></select><span id="historyStatus">Henüz yüklenmedi</span></div>
+      <div class="guide-head"><div><div class="modal-kicker">HARİTA GEÇMİŞİ</div><h2>Harita geçmişi</h2><p>Sezon boyunca kaydedilen piksel değişimlerini gerçek Türkiye haritası üzerinde zaman içinde izle.</p></div><button id="closeHistoryBtn" aria-label="Kapat">×</button></div>
+      <div class="history-preview-wrap"><canvas id="historyPreview" width="960" height="410"></canvas></div>
+      <div class="history-controls"><button class="secondary-btn" id="loadHistoryBtn">YENİDEN YÜKLE</button><button class="place-btn small" id="playHistoryBtn" disabled>▶ OYNAT</button><select id="historySpeed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option><option value="8">8x</option></select><select id="historyViewMode"><option value="artwork">Artwork</option><option value="ownership">Hakimiyet</option></select><span id="historyStatus">Açıldığında otomatik yüklenir</span></div>
       <input id="historyRange" class="history-range" type="range" min="0" max="0" value="0" disabled />
       <div class="history-meta"><span id="historyTime">—</span><span id="historyCount">0 olay</span></div>
     </div>

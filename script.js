@@ -73,11 +73,11 @@ const WORLD_HEIGHT = 615;
 const PROVINCE_BONUS = 5000;
 const REGION_BONUS = 25000;
 const COOLDOWN_MS = 30000;
-const OCEAN = "#061426";
-const LAND = "#27364c";
-const LAND_ALT = "#2d3e56";
-const BORDER = "rgba(238,244,255,.82)";
-const INNER_BORDER = "rgba(225,234,247,.52)";
+const OCEAN = "#edf6ff";
+const LAND = "#f8fafc";
+const LAND_ALT = "#eef2f7";
+const BORDER = "rgba(78,96,121,.78)";
+const INNER_BORDER = "rgba(100,116,139,.46)";
 
 const canvas = document.getElementById("pixelCanvas");
 const ctx = canvas.getContext("2d");
@@ -100,6 +100,19 @@ const MATERIAL_OCEAN = 0;
 const MATERIAL_LAND = 1;
 const MATERIAL_LAND_ALT = 2;
 const PALETTE_OFFSET = 3;
+
+function ensurePaletteMaterial(color) {
+  const normalized = String(color || "#ffffff").toLowerCase();
+  let paletteIndex = paletteColors.findIndex(c => String(c).toLowerCase() === normalized);
+  if (paletteIndex < 0) {
+    paletteColors.push(normalized);
+    paletteIndex = paletteColors.length - 1;
+  }
+  const materialIndex = PALETTE_OFFSET + paletteIndex;
+  while (MATERIAL_COLORS.length <= materialIndex) MATERIAL_COLORS.push("#ffffff");
+  MATERIAL_COLORS[materialIndex] = normalized;
+  return { paletteIndex, materialIndex };
+}
 
 const worldLayer = document.createElement("canvas");
 worldLayer.width = WORLD_WIDTH; worldLayer.height = WORLD_HEIGHT;
@@ -470,9 +483,9 @@ function rebuildOwnershipLayer() {
   for (let i = 0; i < CELL_COUNT; i++) {
     const p = i * 4;
     const provinceIndex = provinceIndexGrid[i];
-    if (!provinceIndex) { data[p]=6; data[p+1]=20; data[p+2]=38; data[p+3]=255; continue; }
+    if (!provinceIndex) { data[p]=237; data[p+1]=246; data[p+2]=255; data[p+3]=255; continue; }
     const ownerIndex = ownerGrid[i];
-    if (!ownerIndex) { data[p]=38; data[p+1]=52; data[p+2]=73; data[p+3]=255; continue; }
+    if (!ownerIndex) { data[p]=232; data[p+1]=238; data[p+2]=245; data[p+3]=255; continue; }
     const rgb = teamRgb[ownerIndex - 1];
     data[p]=rgb[0]; data[p+1]=rgb[1]; data[p+2]=rgb[2]; data[p+3]=255;
   }
@@ -526,7 +539,7 @@ function rebuildBorderLayer() {
       if (right === pIndex && left === pIndex && down === pIndex && up === pIndex) continue;
       const coast = !right || !left || !down || !up;
       const o = idx(x,y) * 4;
-      d[o] = 238; d[o+1] = 244; d[o+2] = 255; d[o+3] = coast ? 225 : 132;
+      d[o] = 71; d[o+1] = 85; d[o+2] = 105; d[o+3] = coast ? 215 : 138;
     }
   }
   borderLayerCtx.putImageData(borderImage, 0, 0);
@@ -545,10 +558,9 @@ function seedHomeProvinces() {
     if (!teamId) continue;
     const team = teamById(teamId);
     const teamIndex = teamIndexById.get(teamId);
-    let paletteIndex = paletteColors.indexOf(team.color);
-    if (paletteIndex < 0) { paletteColors.push(team.color); paletteIndex = paletteColors.length - 1; }
+    const { materialIndex } = ensurePaletteMaterial(team.color);
     ownerGrid[i] = teamIndex;
-    colorGrid[i] = PALETTE_OFFSET + paletteIndex;
+    colorGrid[i] = materialIndex;
     team.pixels++;
     provinceOwnerCounts.get(provinceName)[teamId]++;
   }
@@ -975,7 +987,7 @@ function draw() {
   }
 
   if (ps >= 8) {
-    ctx.strokeStyle = "rgba(255,255,255,.07)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(51,65,85,.10)"; ctx.lineWidth = 1;
     for (let x = -(camera.x % 1) * ps; x < r.width; x += ps) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,r.height); ctx.stroke(); }
     for (let y = -(camera.y % 1) * ps; y < r.height; y += ps) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(r.width,y); ctx.stroke(); }
   }
@@ -997,10 +1009,10 @@ function drawProvinceLabels() {
     const c = feature._centroid, sx = (c.x - camera.x) * camera.zoom, sy = (c.y - camera.y) * camera.zoom;
     if (sx < -70 || sy < -30 || sx > canvas.clientWidth + 70 || sy > canvas.clientHeight + 30) continue;
     const captured = teamById(feature._capturedBy);
-    ctx.fillStyle = "rgba(4,8,16,.76)";
+    ctx.fillStyle = "rgba(255,255,255,.90)";
     const label = feature._name, w = Math.max(26, ctx.measureText(label).width + 6);
     ctx.fillRect(sx - w / 2, sy - 6, w, 12);
-    ctx.fillStyle = captured ? "#fff" : "#dce5f4"; ctx.fillText(label, sx, sy);
+    ctx.fillStyle = captured ? "#172033" : "#334155"; ctx.fillText(label, sx, sy);
     if (captured && camera.zoom > 6) { ctx.fillStyle = captured.color; ctx.fillRect(sx - 2, sy + 8, 4, 4); }
   }
   ctx.restore();
@@ -1014,7 +1026,7 @@ function drawMiniMap() {
     miniCtx.imageSmoothingEnabled = false;
     miniCtx.drawImage(ownershipLayer,0,0,WORLD_WIDTH,WORLD_HEIGHT,0,0,w,h);
   } else miniCtx.drawImage(miniBase,0,0);
-  const r = canvas.getBoundingClientRect(); miniCtx.strokeStyle = "#fff"; miniCtx.lineWidth = 1.4;
+  const r = canvas.getBoundingClientRect(); miniCtx.strokeStyle = "#172033"; miniCtx.lineWidth = 1.4;
   miniCtx.strokeRect(camera.x * px, camera.y * py, (r.width / camera.zoom) * px, (r.height / camera.zoom) * py);
 }
 
@@ -1139,11 +1151,9 @@ function applyLocalPlacement(x, y, teamId, color, countProgress=false) {
   const isDefenseRecapture = Boolean(oldOwner && oldOwner !== teamId);
   if (countProgress && isDefenseRecapture) recordAttack(x, y, provinceName, teamId, oldOwner);
   const cellIndex = idx(x, y);
-  let paletteIndex = paletteColors.indexOf(String(color).toLowerCase());
-  if (paletteIndex < 0) paletteIndex = paletteColors.findIndex(c => c.toLowerCase() === String(color).toLowerCase());
-  if (paletteIndex < 0) paletteIndex = 0;
+  const { materialIndex } = ensurePaletteMaterial(color);
   ownerGrid[cellIndex] = teamIndexById.get(teamId);
-  setWorldPixelMaterial(x, y, PALETTE_OFFSET + paletteIndex);
+  setWorldPixelMaterial(x, y, materialIndex);
   updateOwnershipCell(x, y);
   if (oldOwner !== teamId) {
     const counts = provinceOwnerCounts.get(provinceName);
@@ -1667,9 +1677,9 @@ function restoreBaseCell(x, y) {
   if (homeTeamId) {
     const team = teamById(homeTeamId);
     const ownerIndex = teamIndexById.get(homeTeamId);
-    let paletteIndex = paletteColors.indexOf(team.color);
+    const { materialIndex } = ensurePaletteMaterial(team.color);
     ownerGrid[i] = ownerIndex;
-    colorGrid[i] = PALETTE_OFFSET + paletteIndex;
+    colorGrid[i] = materialIndex;
     const counts = provinceOwnerCounts.get(provinceName);
     if (counts) counts[homeTeamId] = (counts[homeTeamId] || 0) + 1;
     team.pixels++;
@@ -1737,6 +1747,28 @@ async function signOutFanverse() {
   showWelcome(true);
 }
 
+function getAuthRedirectUrl(){
+  if(FANVERSE_CONFIG.authRedirectUrl) return FANVERSE_CONFIG.authRedirectUrl;
+  const clean = new URL(window.location.href);
+  clean.search = ""; clean.hash = "";
+  if(!/\.html?$/.test(clean.pathname) && !clean.pathname.endsWith("/")) clean.pathname += "/";
+  return clean.href;
+}
+function readAuthCallbackMessage(){
+  const url=new URL(window.location.href);
+  const params=new URLSearchParams(url.search);
+  const hashParams=new URLSearchParams((url.hash||"").replace(/^#/,""));
+  const error=params.get("error_description")||hashParams.get("error_description");
+  if(error){
+    const decoded=decodeURIComponent(error.replace(/\+/g," "));
+    setTimeout(()=>{showWelcome(true);openAuthModal();setAuthStatus(decoded.includes("expired")?"Doğrulama bağlantısının süresi dolmuş veya bağlantı daha önce kullanılmış. Yeni bir kayıt/doğrulama bağlantısı isteyebilirsin.":decoded,"error");},250);
+    return;
+  }
+  if(params.get("code")||hashParams.get("access_token")||params.get("type")==="signup"){
+    setTimeout(()=>showToast("E-posta doğrulaması tamamlandı. FANVERSE hesabın hazır."),500);
+  }
+}
+
 async function initAccountLayer() {
   updateAuthChip();
   renderWelcomeFandoms();
@@ -1747,7 +1779,8 @@ async function initAccountLayer() {
     showWelcome(true);
     return;
   }
-  supabaseClient = window.supabase.createClient(FANVERSE_CONFIG.url, FANVERSE_CONFIG.publishableKey);
+  supabaseClient = window.supabase.createClient(FANVERSE_CONFIG.url, FANVERSE_CONFIG.publishableKey, { auth:{ detectSessionInUrl:true, persistSession:true, autoRefreshToken:true } });
+  readAuthCallbackMessage();
 
   // Etkinlik bilgisi izleyici modunda da gereklidir.
   const { data: eventData } = await supabaseClient.from("events").select("id,slug,name,starts_at,ends_at,status").eq("slug", EVENT_SLUG).maybeSingle();
@@ -1815,9 +1848,13 @@ document.getElementById("signUpBtn")?.addEventListener("click", async () => {
   if (!SUPABASE_ENABLED) { setAuthStatus("Supabase yapılandırılmadı.", "error"); return; }
   const email=document.getElementById("authEmail").value.trim(), password=document.getElementById("authPassword").value;
   setAuthStatus("Hesap oluşturuluyor…");
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options:{ emailRedirectTo:getAuthRedirectUrl() }
+  });
   if (error) setAuthStatus(error.message,"error");
-  else if (!data.session) setAuthStatus("Hesap oluşturuldu. E-posta doğrulaması açıksa gelen kutunu kontrol et.","ok");
+  else if (!data.session) setAuthStatus(`Hesap oluşturuldu. E-postandaki doğrulama bağlantısı seni tekrar bu FANVERSE sayfasına getirecek.`,"ok");
   else { setAuthStatus("Hesap oluşturuldu ve giriş yapıldı.","ok"); document.getElementById("authModal").classList.add("hidden"); }
 });
 
@@ -2111,12 +2148,31 @@ async function loadSeasonAwards(){
 function setVisualCellForHistory(ev,useOld=false){
   const x=Number(ev.x),y=Number(ev.y); if(!isLand(x,y))return; const i=idx(x,y);
   const teamId=useOld?ev.old_team_id:ev.new_team_id; const color=useOld?ev.old_color:ev.new_color;
-  if(teamId){ownerGrid[i]=teamIndexById.get(teamId)||0;let pi=paletteColors.indexOf((color||teamById(teamId)?.color||"#ffffff").toLowerCase());if(pi<0){paletteColors.push((color||"#ffffff").toLowerCase());MATERIAL_COLORS.push((color||"#ffffff").toLowerCase());pi=paletteColors.length-1;}colorGrid[i]=PALETTE_OFFSET+pi;}
-  else {const province=provinceAt(x,y),home=HOME_PROVINCES[province]||null;if(home){ownerGrid[i]=teamIndexById.get(home)||0;let pi=paletteColors.indexOf(teamById(home).color);colorGrid[i]=PALETTE_OFFSET+Math.max(0,pi);}else{ownerGrid[i]=0;colorGrid[i]=(x*17+y*11)%43===0?MATERIAL_LAND_ALT:MATERIAL_LAND;}}
+  if(teamId){
+    ownerGrid[i]=teamIndexById.get(teamId)||0;
+    colorGrid[i]=ensurePaletteMaterial(color||teamById(teamId)?.color||"#ffffff").materialIndex;
+  } else {
+    const province=provinceAt(x,y),home=HOME_PROVINCES[province]||null;
+    if(home){ownerGrid[i]=teamIndexById.get(home)||0;colorGrid[i]=ensurePaletteMaterial(teamById(home).color).materialIndex;}
+    else{ownerGrid[i]=0;colorGrid[i]=(x*17+y*11)%43===0?MATERIAL_LAND_ALT:MATERIAL_LAND;}
+  }
 }
-function refreshHistoryVisual(){rebuildWorldLayer();rebuildOwnershipLayer();defenseLayerTeamId=null;miniMapDirty=true;scheduleDraw();}
+function drawHistoryPreview(){
+  const preview=document.getElementById("historyPreview"); if(!preview)return;
+  const pctx=preview.getContext("2d");
+  pctx.clearRect(0,0,preview.width,preview.height);
+  pctx.fillStyle="#edf6ff";pctx.fillRect(0,0,preview.width,preview.height);
+  pctx.imageSmoothingEnabled=false;
+  const mode=document.getElementById("historyViewMode")?.value||"artwork";
+  pctx.drawImage(mode==="ownership"?ownershipLayer:worldLayer,0,0,WORLD_WIDTH,WORLD_HEIGHT,0,0,preview.width,preview.height);
+  pctx.drawImage(borderLayer,0,0,WORLD_WIDTH,WORLD_HEIGHT,0,0,preview.width,preview.height);
+}
+function refreshHistoryVisual(){rebuildWorldLayer();rebuildOwnershipLayer();defenseLayerTeamId=null;miniMapDirty=true;drawHistoryPreview();scheduleDraw();}
 function restoreHistorySnapshot(){if(!v17HistorySnapshot)return;colorGrid.set(v17HistorySnapshot.color);ownerGrid.set(v17HistorySnapshot.owner);v17HistorySnapshot=null;refreshHistoryVisual();}
-async function openHistoryModal(){document.getElementById("historyModal")?.classList.remove("hidden");}
+async function openHistoryModal(){
+  document.getElementById("historyModal")?.classList.remove("hidden");
+  if(!v17HistoryEvents.length) await loadHistory(); else drawHistoryPreview();
+}
 function closeHistoryModal(){clearInterval(v17HistoryTimer);v17HistoryTimer=null;restoreHistorySnapshot();document.getElementById("historyModal")?.classList.add("hidden");}
 async function loadHistory(){
   if(!SUPABASE_ENABLED||!supabaseClient){showToast("Timelapse için Supabase gerekli.");return;}
@@ -2129,7 +2185,7 @@ async function loadHistory(){
   const range=document.getElementById("historyRange");range.max=Math.max(0,v17HistoryEvents.length);range.value=0;range.disabled=!v17HistoryEvents.length;
   document.getElementById("playHistoryBtn").disabled=!v17HistoryEvents.length;
   document.getElementById("historyCount").textContent=`${v17HistoryEvents.length.toLocaleString("tr-TR")} olay`;
-  if(st)st.textContent=v17HistoryEvents.length?"Hazır":"V17 sonrası geçmiş henüz yok";updateHistoryMeta();
+  if(st)st.textContent=v17HistoryEvents.length?"Hazır · zaman çizelgesini sürükleyebilir veya oynatabilirsin":"Bu sezon için kaydedilmiş piksel geçmişi henüz yok";updateHistoryMeta();drawHistoryPreview();
 }
 function updateHistoryMeta(){const ev=v17HistoryEvents[Math.max(0,v17HistoryIndex-1)];document.getElementById("historyTime").textContent=ev?new Intl.DateTimeFormat("tr-TR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(ev.created_at)):"Başlangıç";}
 function seekHistory(target){target=Math.max(0,Math.min(v17HistoryEvents.length,Number(target))); if(!v17HistorySnapshot)return; colorGrid.set(v17HistorySnapshot.color);ownerGrid.set(v17HistorySnapshot.owner);for(let i=v17HistoryEvents.length-1;i>=0;i--)setVisualCellForHistory(v17HistoryEvents[i],true);for(let i=0;i<target;i++)setVisualCellForHistory(v17HistoryEvents[i],false);v17HistoryIndex=target;document.getElementById("historyRange").value=target;refreshHistoryVisual();updateHistoryMeta();}
@@ -2139,6 +2195,7 @@ document.getElementById("closeHistoryBtn")?.addEventListener("click",closeHistor
 document.getElementById("loadHistoryBtn")?.addEventListener("click",loadHistory);
 document.getElementById("playHistoryBtn")?.addEventListener("click",toggleHistoryPlay);
 document.getElementById("historyRange")?.addEventListener("input",e=>seekHistory(e.target.value));
+document.getElementById("historyViewMode")?.addEventListener("change",drawHistoryPreview);
 document.getElementById("historyModal")?.addEventListener("click",e=>{if(e.target.id==="historyModal")closeHistoryModal();});
 document.querySelectorAll("[data-mobile]").forEach(btn=>btn.addEventListener("click",()=>{const t=btn.dataset.mobile;if(t==="map")resetViewToTurkey();else if(t==="ownership"){viewMode="ownership";document.querySelectorAll(".view-btn").forEach(x=>x.classList.toggle("active",x.dataset.view==="ownership"));scheduleDraw();}else if(t==="team")openTeamCenter();else if(t==="history")openHistoryModal();else if(t==="account")openProfileModal();}));
 
@@ -2146,7 +2203,7 @@ document.querySelectorAll("[data-mobile]").forEach(btn=>btn.addEventListener("cl
 let v17Touches=null;
 canvas.addEventListener("touchstart",e=>{if(!mapReady)return;if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];v17Touches={mode:"pinch",dist:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),zoom:camera.zoom,cx:(a.clientX+b.clientX)/2,cy:(a.clientY+b.clientY)/2};}else if(e.touches.length===1){const t=e.touches[0];v17Touches={mode:"drag",sx:t.clientX,sy:t.clientY,cx:camera.x,cy:camera.y,moved:false};}e.preventDefault();},{passive:false});
 canvas.addEventListener("touchmove",e=>{if(!v17Touches)return;if(v17Touches.mode==="pinch"&&e.touches.length===2){const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);const r=canvas.getBoundingClientRect();setZoom(v17Touches.zoom*(d/v17Touches.dist),v17Touches.cx-r.left,v17Touches.cy-r.top);}else if(v17Touches.mode==="drag"&&e.touches.length===1){const t=e.touches[0],dx=t.clientX-v17Touches.sx,dy=t.clientY-v17Touches.sy;if(Math.abs(dx)>5||Math.abs(dy)>5)v17Touches.moved=true;camera.x=v17Touches.cx-dx/camera.zoom;camera.y=v17Touches.cy-dy/camera.zoom;clampCamera();scheduleDraw();}e.preventDefault();},{passive:false});
-canvas.addEventListener("touchend",e=>{if(v17Touches?.mode==="drag"&&!v17Touches.moved){const t=e.changedTouches[0],c=getWorldCoordinates(t.clientX,t.clientY);selectedPixel=isLand(c.x,c.y)?c:null;if(selectedPixel)renderPixelInspector(c.x,c.y);scheduleDraw();}v17Touches=null;});
+canvas.addEventListener("touchend",e=>{if(v17Touches?.mode==="drag"&&!v17Touches.moved){const t=e.changedTouches[0],c=getWorldCoordinates(t.clientX,t.clientY);selectedPixel=isLand(c.x,c.y)?c:null;if(selectedPixel){const provinceName=provinceAt(c.x,c.y);hoveredProvinceName=provinceName;const hover=document.getElementById("hoverRegion");if(hover)hover.textContent=provinceName?`${provinceName} · ${getRegionNameForProvince(provinceName)}`:"Türkiye dışı";renderProvinceSpotlight(provinceName);renderPixelInspector(c.x,c.y);}scheduleDraw();}v17Touches=null;});
 
 document.getElementById("logoutBtn")?.addEventListener("click", signOutFanverse);
 document.getElementById("welcomeLoginBtn")?.addEventListener("click", () => { hideWelcome(); openAuthModal(); document.getElementById("authEmail")?.focus(); });

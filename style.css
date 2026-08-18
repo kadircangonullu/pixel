@@ -156,3 +156,39 @@ body.spectator-mode #placePixelBtn{opacity:.65}
   .team-center-card,.notifications-card,.profile-modal-card,.season-modal-card,.history-card,.guide-card{width:100%!important;max-width:100%!important}
   .toast{left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));max-width:none}
 }
+
+
+/* V19 · Light UI refresh + auth/history/mobile fixes */
+:root{--bg:#f5f8fc;--panel:#ffffff;--panel2:#f4f7fb;--border:rgba(30,41,59,.13);--text:#172033;--muted:#64748b;--pink:#f43f91;--green:#16a36a}
+body{background:linear-gradient(180deg,#ffffff 0,#f6f9fd 58%,#eef4fa 100%);color:var(--text)}
+.sidebar{background:rgba(255,255,255,.97);box-shadow:8px 0 28px rgba(15,23,42,.04)}
+.topbar{background:rgba(255,255,255,.92);box-shadow:0 5px 24px rgba(15,23,42,.035)}
+.nav-link{color:#64748b}.nav-link:hover{color:#172033}
+.brand-icon{background:#fff1f7}.team-card,.panel-card,.region-row,.leader-row,.log-item,.player-battle-stats>div,.mobile-stat-grid>div,.mobile-team-copy{background:#fff}
+.canvas-section{background:#fff;box-shadow:0 12px 34px rgba(15,23,42,.06)}
+.canvas-wrapper{background:radial-gradient(circle at 50% 40%,#ffffff,#eef6fc 82%);box-shadow:inset 0 0 60px rgba(91,115,145,.08)}
+.pixel-controls{background:#fff}.cooldown{background:#f7f9fc}.tool-btn{background:#f7f9fc;color:#243248}.tool-btn:hover{background:#eef3f8}
+.map-tip,.hover-region{background:rgba(255,255,255,.93);color:#526174;box-shadow:0 5px 18px rgba(15,23,42,.08)}
+.minimap-wrap{background:#eef6ff;border-color:rgba(51,65,85,.22);box-shadow:0 8px 24px rgba(15,23,42,.10)}
+.block-title,.panel-title{color:#334155}.home-city{background:#f8fafc}.stat-row strong,.team-name,.region-name{color:#172033}
+.region-progress,.xp-track,.dist-row>div{background:#e9eef5}
+.confirm-modal,.auth-modal,.team-lock-modal,.profile-modal,.season-modal,.season-result-modal,.guide-modal,.team-center-modal,.notifications-modal,.history-modal{background:rgba(226,235,245,.72);backdrop-filter:blur(12px)}
+.confirm-card,.auth-modal-card,.team-lock-card,.profile-modal-card,.season-modal-card,.season-result-card,.guide-card,.team-center-card,.notifications-card,.history-card{background:#fff;color:#172033;border-color:rgba(30,41,59,.14);box-shadow:0 30px 85px rgba(51,65,85,.16)}
+.secondary-btn,.danger-btn,.defense-action-btn{background:#f6f8fb;color:#334155;border-color:rgba(51,65,85,.16)}
+.secondary-btn:hover,.defense-action-btn:hover{background:#eef3f8}.profile-field input,.coordinate-editor input,.coordinate-editor select,.artwork-create input,.artwork-create select,.history-controls select{background:#fff;color:#172033;border-color:rgba(51,65,85,.18)}
+.welcome-screen{background:radial-gradient(circle at 18% 20%,rgba(244,63,145,.10),transparent 34%),radial-gradient(circle at 82% 70%,rgba(59,130,246,.09),transparent 32%),#f7faff}
+.welcome-card{background:rgba(255,255,255,.94);border-color:rgba(51,65,85,.12);box-shadow:0 36px 100px rgba(71,85,105,.16)}
+.welcome-card>p,.welcome-card .welcome-rules span{color:#64748b}.welcome-season{background:#f8fafc}.welcome-secondary{background:#f4f7fb;color:#243248;border-color:rgba(51,65,85,.16)}.welcome-watch:hover{color:#172033}
+.guide-grid article,.guide-compare>div{background:#f8fafc}.guide-head>button,.team-center-head>button{color:#64748b;background:#f5f7fa}.guide-art-demo{color:#fff}
+.notification-btn{background:#fff;color:#334155}.notification-badge{border-color:#fff}.auth-chip{color:#334155}
+.pixel-inspector{background:rgba(255,255,255,.97);border-color:rgba(51,65,85,.16);box-shadow:0 18px 45px rgba(51,65,85,.16)}
+.inspector-head button{color:#64748b}.connection-banner{background:rgba(255,255,255,.97);color:#334155;border-color:rgba(51,65,85,.15);box-shadow:0 14px 38px rgba(51,65,85,.14)}.connection-banner button{background:#f4f7fb;color:#334155}
+.history-card{width:min(1080px,96vw)}.history-preview-wrap{margin:18px 0 14px;border:1px solid rgba(51,65,85,.14);border-radius:14px;overflow:hidden;background:#edf6ff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.65)}#historyPreview{display:block;width:100%;height:auto;aspect-ratio:1440/615;image-rendering:pixelated}.history-controls{flex-wrap:wrap}.history-controls select{padding:10px;border-radius:8px}.history-meta{color:#64748b}
+.welcome-auth-note{display:none;margin-top:14px;padding:10px 12px;border-radius:10px;background:#eefbf5;border:1px solid rgba(22,163,106,.18);color:#19734f;font-size:9px}.welcome-auth-note.show{display:block}
+@media(max-width:700px){
+  .right-panel{background:#f7f9fc!important;border-top-color:rgba(51,65,85,.15)!important;box-shadow:0 -22px 60px rgba(71,85,105,.20)!important}
+  .mobile-panel-head{background:rgba(255,255,255,.98)!important}.mobile-panel-head button{background:#f4f7fb!important;color:#334155!important}
+  .mobile-shortcut-grid button,.mobile-shortcut-grid a{background:#fff!important;color:#334155!important;border-color:rgba(51,65,85,.15)!important}.mobile-shortcut-grid button:active,.mobile-shortcut-grid a:active{background:#edf2f7!important}
+  .mobile-nav{background:rgba(255,255,255,.97)!important;border-top-color:rgba(51,65,85,.13)!important;box-shadow:0 -6px 22px rgba(71,85,105,.10)}.mobile-nav button{color:#64748b!important}.mobile-nav button.active,.mobile-nav button:active{color:#172033!important;background:rgba(244,63,145,.08)!important}
+  .pixel-controls .cooldown{background:#f7f9fc!important}.history-card{padding:12px!important}.history-preview-wrap{margin-top:12px}
+}
