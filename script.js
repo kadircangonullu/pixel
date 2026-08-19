@@ -139,6 +139,30 @@ const heatmapLayerCtx = heatmapLayer.getContext("2d");
 heatmapLayerCtx.imageSmoothingEnabled = false;
 let heatmapDirty = true;
 
+const artworkGuideLayer = document.createElement("canvas");
+artworkGuideLayer.width = WORLD_WIDTH; artworkGuideLayer.height = WORLD_HEIGHT;
+const artworkGuideLayerCtx = artworkGuideLayer.getContext("2d");
+artworkGuideLayerCtx.imageSmoothingEnabled = false;
+let artworkGuideDirty = true;
+
+function rebuildArtworkGuideLayer() {
+  artworkGuideLayerCtx.clearRect(0,0,WORLD_WIDTH,WORLD_HEIGHT);
+  if (!selectedTeam) { artworkGuideDirty=false; return; }
+  for (const t of v16Artworks || []) {
+    for (const c of v16ArtworkCells.get(t.id) || []) {
+      const x=Number(c.x), y=Number(c.y); if(!isLand(x,y)) continue;
+      const colorOk=String(materialColorAt(x,y)).toLowerCase()===String(c.expected_color).toLowerCase();
+      const ownerOk=ownerAt(x,y)===selectedTeam.id;
+      if(colorOk && ownerOk) continue;
+      artworkGuideLayerCtx.globalAlpha=.42;
+      artworkGuideLayerCtx.fillStyle=String(c.expected_color||"#ff4b9b");
+      artworkGuideLayerCtx.fillRect(x,y,1,1);
+    }
+  }
+  artworkGuideLayerCtx.globalAlpha=1; artworkGuideDirty=false;
+}
+
+
 const miniBase = document.createElement("canvas");
 miniBase.width = miniMap.width; miniBase.height = miniMap.height;
 const miniBaseCtx = miniBase.getContext("2d", { alpha: false });
@@ -414,6 +438,30 @@ async function loadTurkeyMap() {
   }
 }
 
+function healProvinceSeams() {
+  // GeoJSON polygons occasionally leave single raster cells between neighbouring provinces.
+  // Only bridge cells clearly trapped between land, so coastlines stay intact.
+  for (let pass = 0; pass < 2; pass++) {
+    const fixes = [];
+    for (let y = 1; y < WORLD_HEIGHT - 1; y++) {
+      for (let x = 1; x < WORLD_WIDTH - 1; x++) {
+        const i = idx(x,y); if (provinceIndexGrid[i]) continue;
+        const n = [provinceIndexGrid[idx(x-1,y)], provinceIndexGrid[idx(x+1,y)], provinceIndexGrid[idx(x,y-1)], provinceIndexGrid[idx(x,y+1)], provinceIndexGrid[idx(x-1,y-1)], provinceIndexGrid[idx(x+1,y-1)], provinceIndexGrid[idx(x-1,y+1)], provinceIndexGrid[idx(x+1,y+1)]];
+        const orthBridge = (n[0] && n[1]) || (n[2] && n[3]);
+        const landNeighbors = n.filter(Boolean);
+        if (!orthBridge && landNeighbors.length < 6) continue;
+        const freq = new Map(); for (const v of landNeighbors) freq.set(v,(freq.get(v)||0)+1);
+        const winner = [...freq.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0];
+        if (winner) fixes.push([i,winner]);
+      }
+    }
+    for (const [i,winner] of fixes) { provinceIndexGrid[i]=winner; colorGrid[i]=MATERIAL_LAND; }
+    if (!fixes.length) break;
+  }
+  provinceCellTotals.clear(); totalPlayablePixels=0;
+  for (let i=0;i<CELL_COUNT;i++) { const pi=provinceIndexGrid[i]; if(!pi) continue; const name=provinceNamesByIndex[pi]; provinceCellTotals.set(name,(provinceCellTotals.get(name)||0)+1); totalPlayablePixels++; }
+}
+
 function rasterizeProvinces() {
   provinceNamesByIndex.length = 1;
   provinceIndexByName.clear();
@@ -448,6 +496,7 @@ function rasterizeProvinces() {
     totalPlayablePixels += total;
   });
 
+  healProvinceSeams();
   rebuildWorldLayer();
   rebuildBorderLayer();
 }
@@ -517,6 +566,7 @@ function updateOwnershipCell(x, y) {
   ownershipLayerCtx.fillStyle = ownerIndex ? teams[ownerIndex - 1].color : LAND;
   ownershipLayerCtx.fillRect(x,y,1,1);
   if (viewMode === "defense") defenseLayerTeamId = null;
+  artworkGuideDirty = true;
 }
 
 function materialColorAt(x,y) {
@@ -945,8 +995,6 @@ async function refreshPublicPlayerLeaderboards() {
   const teamSelect = document.getElementById("rankingTeamSelect");
   if (teamSelect && authUser && lockedTeamId) teamSelect.value = lockedTeamId;
   const teamId = teamSelect?.value || lockedTeamId || "crush";
-  const detail = document.getElementById("teamLeaderboardDetailLink");
-  if (detail) detail.href = `leaderboard.html?mode=team&team=${encodeURIComponent(teamId)}`;
   await Promise.all([
     loadPublicPlayerLeaderboard(null, "globalPlayerLeaderboard"),
     loadPublicPlayerLeaderboard(teamId, "teamPlayerLeaderboard")
@@ -954,10 +1002,38 @@ async function refreshPublicPlayerLeaderboards() {
 }
 document.getElementById("rankingTeamSelect")?.addEventListener("change", async e => {
   const teamId = e.target.value;
-  const detail = document.getElementById("teamLeaderboardDetailLink");
-  if (detail) detail.href = `leaderboard.html?mode=team&team=${encodeURIComponent(teamId)}`;
   await loadPublicPlayerLeaderboard(teamId, "teamPlayerLeaderboard");
 });
+
+
+// V21 · in-page paginated player leaderboard
+let leaderboardModalMode="global", leaderboardModalPage=1, leaderboardModalTotal=0;
+async function loadLeaderboardModal(){
+  const list=document.getElementById("leaderboardModalList"); if(!list)return;
+  const teamId=leaderboardModalMode==="team" ? document.getElementById("leaderboardModalTeam")?.value : null;
+  list.innerHTML='<div class="log-empty">Sıralama yükleniyor…</div>';
+  const {data,error}=await supabaseClient.rpc("public_player_leaderboard",{p_event_slug:EVENT_SLUG,p_team_id:teamId,p_page:leaderboardModalPage,p_page_size:25});
+  if(error){list.innerHTML=`<div class="log-empty">${escapeHtml(error.message)}</div>`;return;}
+  leaderboardModalTotal=Number(data?.[0]?.total_count||0); const pages=Math.max(1,Math.ceil(leaderboardModalTotal/25)); if(leaderboardModalPage>pages){leaderboardModalPage=pages;return loadLeaderboardModal();}
+  list.innerHTML=(data||[]).map(playerRankRow).join("")||'<div class="log-empty">Henüz oyuncu yok.</div>';
+  document.getElementById("leaderboardPageInfo").textContent=`${leaderboardModalPage} / ${pages} · ${leaderboardModalTotal.toLocaleString("tr-TR")} oyuncu`;
+  document.getElementById("leaderboardPrevBtn").disabled=leaderboardModalPage<=1; document.getElementById("leaderboardNextBtn").disabled=leaderboardModalPage>=pages;
+  document.getElementById("leaderboardModalTitle").textContent=leaderboardModalMode==="team"?`${teamById(teamId)?.name||teamId} içi sıralama`:"Genel oyuncu sıralaması";
+}
+function openLeaderboardModal(mode="global"){
+  leaderboardModalMode=mode; leaderboardModalPage=1;
+  const teamSelect=document.getElementById("leaderboardModalTeam"); if(teamSelect){teamSelect.value=document.getElementById("rankingTeamSelect")?.value||lockedTeamId||"crush";teamSelect.classList.toggle("hidden",mode!=="team");}
+  document.querySelectorAll(".leaderboard-mode-btn").forEach(b=>b.classList.toggle("active",b.dataset.lbMode===mode));
+  document.getElementById("leaderboardModal")?.classList.remove("hidden"); loadLeaderboardModal();
+}
+document.getElementById("openGlobalLeaderboardBtn")?.addEventListener("click",()=>openLeaderboardModal("global"));
+document.getElementById("teamLeaderboardDetailLink")?.addEventListener("click",()=>openLeaderboardModal("team"));
+document.getElementById("closeLeaderboardModalBtn")?.addEventListener("click",()=>document.getElementById("leaderboardModal")?.classList.add("hidden"));
+document.getElementById("leaderboardModal")?.addEventListener("click",e=>{if(e.target.id==="leaderboardModal")e.currentTarget.classList.add("hidden")});
+document.querySelectorAll(".leaderboard-mode-btn").forEach(b=>b.addEventListener("click",()=>{leaderboardModalMode=b.dataset.lbMode;leaderboardModalPage=1;document.querySelectorAll(".leaderboard-mode-btn").forEach(x=>x.classList.toggle("active",x===b));document.getElementById("leaderboardModalTeam")?.classList.toggle("hidden",leaderboardModalMode!=="team");loadLeaderboardModal();}));
+document.getElementById("leaderboardModalTeam")?.addEventListener("change",()=>{leaderboardModalPage=1;loadLeaderboardModal();});
+document.getElementById("leaderboardPrevBtn")?.addEventListener("click",()=>{if(leaderboardModalPage>1){leaderboardModalPage--;loadLeaderboardModal();}});
+document.getElementById("leaderboardNextBtn")?.addEventListener("click",()=>{leaderboardModalPage++;loadLeaderboardModal();});
 
 function updateGlobalStats() {
   const live = serverLiveStats;
@@ -1028,6 +1104,7 @@ function draw() {
       ctx.drawImage(defenseLayer, sourceX, sourceY, sourceW, sourceH, destX, destY, sourceW * ps, sourceH * ps);
     } else {
       ctx.drawImage(worldLayer, sourceX, sourceY, sourceW, sourceH, destX, destY, sourceW * ps, sourceH * ps);
+      if (selectedTeam && v16Artworks?.length) { if (artworkGuideDirty) rebuildArtworkGuideLayer(); ctx.drawImage(artworkGuideLayer, sourceX, sourceY, sourceW, sourceH, destX, destY, sourceW * ps, sourceH * ps); }
     }
     ctx.drawImage(borderLayer, sourceX, sourceY, sourceW, sourceH, destX, destY, sourceW * ps, sourceH * ps);
     if (heatmapEnabled) {
@@ -1594,6 +1671,7 @@ async function loadServerBattleState() {
     }
   }
   renderLeaderboard(); renderRegionBoard(); updateGlobalStats(); renderProvinceSpotlight(hoveredProvinceName);
+  syncLeaderMusic();
 }
 
 function scheduleBattleStateReload() {
@@ -2026,7 +2104,8 @@ async function loadTeamArtworks() {
     const { data: cells, error: cellsError } = await supabaseClient.from("artwork_template_cells").select("template_id,x,y,expected_color").in("template_id",ids);
     if (!cellsError) for (const c of cells || []) { if (!v16ArtworkCells.has(c.template_id)) v16ArtworkCells.set(c.template_id,[]); v16ArtworkCells.get(c.template_id).push(c); }
   }
-  renderArtworkTemplates();
+  artworkGuideDirty = true;
+  renderArtworkTemplates(); scheduleDraw();
 }
 
 function artworkHealth(template) {
@@ -2097,6 +2176,35 @@ async function createArtworkFromSelection() {
   document.getElementById("artworkNameInput").value=""; await loadTeamArtworks(); await loadNotifications(); showToast(`Artwork şablonu kaydedildi · ${cells.length.toLocaleString("tr-TR")} piksel`);
 }
 
+
+// V21 · pixel-art draft designer
+let designerSize=24, designerCells=new Map(), designerColor="#ff4b9b", designerErase=false, designerDrawing=false;
+function designerKey(x,y){return `${x},${y}`;}
+function designerCanvas(){return document.getElementById("artworkDesignerCanvas");}
+function resetDesigner(size=Number(document.getElementById("artworkDesignerSize")?.value||24)){designerSize=Math.max(8,Math.min(48,size));designerCells=new Map();drawArtworkDesigner();}
+function drawArtworkDesigner(){
+  const c=designerCanvas(); if(!c)return; const d=c.getContext("2d"); const s=c.width/designerSize; d.clearRect(0,0,c.width,c.height);d.fillStyle="#fff";d.fillRect(0,0,c.width,c.height);
+  for(const [key,color] of designerCells){const [x,y]=key.split(",").map(Number);d.fillStyle=color;d.fillRect(x*s,y*s,s,s);}
+  d.strokeStyle="rgba(100,116,139,.20)";d.lineWidth=1;for(let i=0;i<=designerSize;i++){const q=Math.round(i*s)+.5;d.beginPath();d.moveTo(q,0);d.lineTo(q,c.height);d.stroke();d.beginPath();d.moveTo(0,q);d.lineTo(c.width,q);d.stroke();}
+}
+function designerPaintEvent(e,eraseOverride=false){const c=designerCanvas();if(!c)return;const r=c.getBoundingClientRect();const touch=e.touches?.[0];const cx=(touch?.clientX??e.clientX)-r.left,cy=(touch?.clientY??e.clientY)-r.top;const x=Math.floor(cx/r.width*designerSize),y=Math.floor(cy/r.height*designerSize);if(x<0||y<0||x>=designerSize||y>=designerSize)return;const erase=eraseOverride||designerErase||e.buttons===2;if(erase)designerCells.delete(designerKey(x,y));else designerCells.set(designerKey(x,y),designerColor);drawArtworkDesigner();}
+function renderDesignerPalette(){const w=document.getElementById("artworkDesignerPalette");if(!w)return;w.innerHTML=paletteColors.map(c=>`<button type="button" data-designer-color="${c}" style="background:${c}" class="${String(c).toLowerCase()===designerColor?'active':''}"></button>`).join("");w.querySelectorAll("[data-designer-color]").forEach(b=>b.onclick=()=>{designerColor=b.dataset.designerColor;designerErase=false;renderDesignerPalette();document.getElementById("artworkDesignerEraser")?.classList.remove("active");});}
+function openArtworkDesigner(){
+  if(!v16Role?.can_coordinate){showToast("Artwork taslağı için Stratejist veya Komutan rolü gerekir.");return;} if(viewMode!=="artwork"){viewMode="artwork";document.querySelectorAll(".view-btn").forEach(x=>x.classList.toggle("active",x.dataset.view==="artwork"));scheduleDraw();}
+  if(!selectedPixel){showToast("Önce haritada şablonun merkezini seç.");return;} const province=provinceAt(selectedPixel.x,selectedPixel.y);if(!province){showToast("Türkiye içinde bir piksel seç.");return;}
+  document.getElementById("artworkDesignerAnchor").textContent=`${province} · X:${selectedPixel.x} Y:${selectedPixel.y}`;designerColor=selectedTeam?.color||"#ff4b9b";designerErase=false;renderDesignerPalette();resetDesigner();document.getElementById("artworkDesignerModal")?.classList.remove("hidden");
+}
+async function saveArtworkDraft(){
+  if(!selectedPixel||!selectedTeam)return;const name=(document.getElementById("artworkDesignerName")?.value||"").trim();if(name.length<2){showToast("Şablona bir isim ver.");return;}if(!designerCells.size){showToast("Taslakta en az bir piksel çiz.");return;}
+  const province=provinceAt(selectedPixel.x,selectedPixel.y), size=designerSize;let x1=Math.round(selectedPixel.x-(size-1)/2),y1=Math.round(selectedPixel.y-(size-1)/2);x1=Math.max(0,Math.min(WORLD_WIDTH-size,x1));y1=Math.max(0,Math.min(WORLD_HEIGHT-size,y1));const x2=x1+size-1,y2=y1+size-1;
+  const cells=[];for(const [key,color] of designerCells){const [lx,ly]=key.split(",").map(Number),x=x1+lx,y=y1+ly;if(provinceAt(x,y)!==province)continue;cells.push({x,y,color});}
+  if(!cells.length){showToast("Çizim seçili ilin sınırları içinde piksel içermiyor.");return;}const btn=document.getElementById("saveArtworkDesignerBtn");btn.disabled=true;btn.textContent="KAYDEDİLİYOR…";
+  const {error}=await supabaseClient.rpc("create_artwork_template",{p_event_slug:EVENT_SLUG,p_name:name,p_province_name:province,p_x1:x1,p_y1:y1,p_x2:x2,p_y2:y2,p_cells:cells});btn.disabled=false;btn.textContent="ŞABLONU KAYDET";
+  if(error){showToast(`Artwork kaydedilemedi: ${error.message}`);return;}document.getElementById("artworkDesignerModal")?.classList.add("hidden");document.getElementById("artworkDesignerName").value="";await loadTeamArtworks();await loadNotifications();showToast(`Taslak kaydedildi · ${cells.length} hedef piksel`);
+}
+document.getElementById("openArtworkDesignerBtn")?.addEventListener("click",openArtworkDesigner);document.getElementById("closeArtworkDesignerBtn")?.addEventListener("click",()=>document.getElementById("artworkDesignerModal")?.classList.add("hidden"));document.getElementById("artworkDesignerSize")?.addEventListener("change",e=>resetDesigner(Number(e.target.value)));document.getElementById("artworkDesignerEraser")?.addEventListener("click",e=>{designerErase=!designerErase;e.currentTarget.classList.toggle("active",designerErase);});document.getElementById("artworkDesignerClear")?.addEventListener("click",()=>resetDesigner(designerSize));document.getElementById("saveArtworkDesignerBtn")?.addEventListener("click",saveArtworkDraft);
+(()=>{const c=designerCanvas();if(!c)return;c.addEventListener("contextmenu",e=>e.preventDefault());c.addEventListener("mousedown",e=>{designerDrawing=true;designerPaintEvent(e,e.button===2)});c.addEventListener("mousemove",e=>{if(designerDrawing)designerPaintEvent(e)});window.addEventListener("mouseup",()=>designerDrawing=false);c.addEventListener("touchstart",e=>{designerDrawing=true;designerPaintEvent(e);e.preventDefault()},{passive:false});c.addEventListener("touchmove",e=>{if(designerDrawing)designerPaintEvent(e);e.preventDefault()},{passive:false});c.addEventListener("touchend",()=>designerDrawing=false);})();
+
 async function setTeamTargetFromUI() {
   if (!v16Role?.can_coordinate) { showToast("Takım hedefini yalnız Stratejist veya Komutan değiştirebilir."); return; }
   const province=document.getElementById("targetProvinceSelect")?.value; const message=document.getElementById("targetMessageInput")?.value||"";
@@ -2150,12 +2258,24 @@ document.getElementById("closeTeamCenterBtn")?.addEventListener("click",closeTea
 document.getElementById("teamCenterModal")?.addEventListener("click",e=>{if(e.target.id==="teamCenterModal")closeTeamCenter();});
 document.getElementById("goTeamTargetBtn")?.addEventListener("click",()=>{const p=v16TeamCenter?.target?.province_name;if(p){closeTeamCenter();goToProvince(p);}});
 document.getElementById("setTeamTargetBtn")?.addEventListener("click",setTeamTargetFromUI);
-document.getElementById("createArtworkBtn")?.addEventListener("click",createArtworkFromSelection);
+
 document.getElementById("notificationBtn")?.addEventListener("click",openNotifications);
 document.getElementById("closeNotificationsBtn")?.addEventListener("click",closeNotifications);
 document.getElementById("notificationsModal")?.addEventListener("click",e=>{if(e.target.id==="notificationsModal")closeNotifications();});
 document.getElementById("markNotificationsReadBtn")?.addEventListener("click",markNotificationsRead);
 
+
+
+// V21 · leading fandom music. YouTube audio begins after the first user gesture because browsers block unsolicited sound.
+let leaderMusicEnabled=localStorage.getItem("fanverse_music_enabled")!=="0",leaderMusicTeam=null,leaderMusicTracks=[],leaderMusicIndex=0,leaderYTPlayer=null,leaderYTReady=false,leaderMusicGesture=false;
+function currentLeadingTeam(){return [...teams].sort((a,b)=>Number(b.points||0)-Number(a.points||0))[0]||null;}
+async function loadLeaderMusic(teamId){if(!SUPABASE_ENABLED||!supabaseClient||!teamId)return[];const {data,error}=await supabaseClient.from("fandom_music_tracks").select("id,team_id,title,youtube_video_id,position").eq("team_id",teamId).eq("enabled",true).order("position");if(error){console.warn("music playlist",error);return[]}return data||[];}
+function renderLeaderMusicDock(){const team=teamById(leaderMusicTeam);const dot=document.getElementById("leaderMusicDot"),title=document.getElementById("leaderMusicTitle"),track=document.getElementById("leaderMusicTrack"),btn=document.getElementById("leaderMusicToggle");if(dot)dot.style.background=team?.color||"#94a3b8";if(title)title.textContent=team?`${team.name} önde`:"Lider bekleniyor";if(track)track.textContent=leaderMusicTracks.length?(leaderMusicTracks[leaderMusicIndex]?.title||"Playlist"):`${team?.name||"Fandom"} için playlist henüz eklenmemiş`;if(btn)btn.textContent=leaderMusicEnabled?(leaderYTPlayer&&leaderMusicGesture?"DURDUR":"MÜZİĞİ BAŞLAT"):"MÜZİĞİ AÇ";}
+async function syncLeaderMusic(){const leader=currentLeadingTeam();if(!leader||leader.id===leaderMusicTeam&&leaderMusicTracks.length)return;leaderMusicTeam=leader.id;leaderMusicIndex=0;leaderMusicTracks=await loadLeaderMusic(leader.id);renderLeaderMusicDock();if(leaderMusicEnabled&&leaderMusicGesture)playLeaderTrack();}
+function playLeaderTrack(){if(!leaderMusicEnabled||!leaderMusicGesture||!leaderMusicTracks.length||!window.YT?.Player)return;const vid=leaderMusicTracks[leaderMusicIndex]?.youtube_video_id;if(!vid)return;if(!leaderYTPlayer){leaderYTPlayer=new YT.Player("leaderYoutubePlayer",{height:"1",width:"1",videoId:vid,playerVars:{autoplay:1,controls:0,playsinline:1},events:{onReady:e=>{leaderYTReady=true;e.target.playVideo();renderLeaderMusicDock();},onStateChange:e=>{if(e.data===YT.PlayerState.ENDED){leaderMusicIndex=(leaderMusicIndex+1)%leaderMusicTracks.length;leaderYTPlayer.loadVideoById(leaderMusicTracks[leaderMusicIndex].youtube_video_id);renderLeaderMusicDock();}}}});}else if(leaderYTReady){leaderYTPlayer.loadVideoById(vid);leaderYTPlayer.playVideo();}renderLeaderMusicDock();}
+window.onYouTubeIframeAPIReady=()=>{if(leaderMusicEnabled&&leaderMusicGesture)playLeaderTrack();};
+document.getElementById("leaderMusicToggle")?.addEventListener("click",()=>{leaderMusicGesture=true;if(leaderMusicEnabled&&leaderYTPlayer){leaderMusicEnabled=false;leaderYTPlayer.pauseVideo();}else{leaderMusicEnabled=true;playLeaderTrack();}localStorage.setItem("fanverse_music_enabled",leaderMusicEnabled?"1":"0");renderLeaderMusicDock();});
+document.addEventListener("pointerdown",()=>{if(!leaderMusicGesture){leaderMusicGesture=true;if(leaderMusicEnabled)playLeaderTrack();}},{once:true});
 
 // =========================================================
 // V17 · FINAL PLATFORM

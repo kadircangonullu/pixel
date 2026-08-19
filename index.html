@@ -185,7 +185,7 @@
                 <div class="panel-title">OYUNCU LİDERLİĞİ</div>
                 <span class="tiny-note">Genel · en yüksek puanlı ilk 10</span>
               </div>
-              <a class="panel-detail-link" href="leaderboard.html?mode=global">TÜMÜNÜ GÖR</a>
+              <button class="panel-detail-link" id="openGlobalLeaderboardBtn" type="button">TÜMÜNÜ GÖR</button>
             </div>
             <div class="player-leaderboard" id="globalPlayerLeaderboard">
               <div class="log-empty">Liderlik verileri yükleniyor…</div>
@@ -198,7 +198,7 @@
                 <div class="panel-title">FANDOM İÇİ LİDERLER</div>
                 <span class="tiny-note">Takım bazında ilk 10 oyuncu</span>
               </div>
-              <a class="panel-detail-link" id="teamLeaderboardDetailLink" href="leaderboard.html?mode=team&team=crush">DETAY</a>
+              <button class="panel-detail-link" id="teamLeaderboardDetailLink" type="button">DETAY</button>
             </div>
             <select class="ranking-team-select" id="rankingTeamSelect" aria-label="Fandom liderlik takımı">
               <option value="crush">CRUSH</option>
@@ -305,7 +305,7 @@
       <div class="team-center-rolebar"><div><small>FANDOM ROLÜN</small><strong id="teamCenterRole">ÇAYLAK</strong></div><div><small>AKTİF HEDEF</small><strong id="teamCenterTarget">Henüz hedef yok</strong></div><button id="goTeamTargetBtn" class="place-btn small" disabled>HEDEFE GİT</button></div>
       <div class="team-center-grid">
         <section class="team-center-section"><div class="section-head"><div><small>TAKIM KOORDİNASYONU</small><h3>Aktif cephe</h3></div><span id="coordinationPermission" class="role-chip">OKUMA</span></div><div id="teamThreats" class="team-threats"><div class="log-empty">Veriler yükleniyor…</div></div><div class="coordinate-editor hidden" id="coordinateEditor"><select id="targetProvinceSelect"></select><input id="targetMessageInput" maxlength="180" placeholder="Kısa takım mesajı (opsiyonel)" /><button id="setTeamTargetBtn" class="place-btn small">HEDEFİ GÜNCELLE</button></div></section>
-        <section class="team-center-section"><div class="section-head"><div><small>ARTWORK KORUMA</small><h3>Takım şablonları</h3></div><span class="role-chip" id="artworkCountBadge">0 ŞABLON</span></div><div id="artworkTemplates" class="artwork-templates"><div class="log-empty">Şablonlar yükleniyor…</div></div><div class="artwork-create hidden" id="artworkCreateBox"><input id="artworkNameInput" maxlength="48" placeholder="Örn. CRUSH İstanbul Logo" /><select id="artworkSizeSelect"><option value="24">24 × 24</option><option value="32">32 × 32</option><option value="40">40 × 40</option><option value="48">48 × 48</option></select><button id="createArtworkBtn" class="place-btn small">SEÇİLİ PİKSEL ETRAFINI ŞABLON YAP</button><small>Stratejist/Komutan: önce haritada artwork'ün merkezinden bir piksel seç.</small></div></section>
+        <section class="team-center-section"><div class="section-head"><div><small>ARTWORK KORUMA</small><h3>Takım şablonları</h3></div><span class="role-chip" id="artworkCountBadge">0 ŞABLON</span></div><div id="artworkTemplates" class="artwork-templates"><div class="log-empty">Şablonlar yükleniyor…</div></div><div class="artwork-create hidden" id="artworkCreateBox"><button id="openArtworkDesignerBtn" class="place-btn small" type="button">YENİ ARTWORK TASLAĞI ÇİZ</button><small>Stratejist/Komutan: Artwork modunda piksel piksel taslağı çiz, sonra takımın tamamlasın.</small></div></section>
       </div>
     </div>
   </div>
@@ -315,6 +315,32 @@
       <div class="team-center-head"><div><div class="modal-kicker">CANLI BİLDİRİMLER</div><h2>Bildirim merkezi</h2><p>Takım hedefleri, artwork ve hakimiyet değişimleri.</p></div><button id="closeNotificationsBtn" aria-label="Kapat">×</button></div>
       <div class="notifications-actions"><button class="secondary-btn" id="markNotificationsReadBtn">TÜMÜNÜ OKUNDU YAP</button></div>
       <div class="notifications-list" id="notificationsList"><div class="log-empty">Bildirimler yükleniyor…</div></div>
+    </div>
+  </div>
+
+  <div class="leaderboard-modal hidden" id="leaderboardModal">
+    <div class="leaderboard-modal-card">
+      <div class="team-center-head"><div><div class="modal-kicker">OYUNCU LİDERLİĞİ</div><h2 id="leaderboardModalTitle">Genel sıralama</h2><p>Sezon oyuncularını puan ve katkılarına göre incele.</p></div><button id="closeLeaderboardModalBtn" aria-label="Kapat">×</button></div>
+      <div class="leaderboard-modal-toolbar"><button class="leaderboard-mode-btn active" data-lb-mode="global">GENEL</button><button class="leaderboard-mode-btn" data-lb-mode="team">FANDOM İÇİ</button><select id="leaderboardModalTeam"><option value="crush">CRUSH</option><option value="manifest">MANIFEST</option><option value="aura">AURA</option><option value="karm6">KARM6</option><option value="mantra">MANTRA</option><option value="radikal">RADİKAL</option><option value="perma">PERMA</option></select></div>
+      <div class="leaderboard-modal-list" id="leaderboardModalList"><div class="log-empty">Sıralama yükleniyor…</div></div>
+      <div class="leaderboard-pagination"><button id="leaderboardPrevBtn" class="secondary-btn">← ÖNCEKİ</button><span id="leaderboardPageInfo">1 / 1</span><button id="leaderboardNextBtn" class="secondary-btn">SONRAKİ →</button></div>
+    </div>
+  </div>
+
+  <div class="artwork-designer-modal hidden" id="artworkDesignerModal">
+    <div class="artwork-designer-card">
+      <div class="team-center-head"><div><div class="modal-kicker">ARTWORK STÜDYOSU</div><h2>Takım şablonunu çiz</h2><p>Şablon haritada yarı saydam rehber olarak görünür; takım üyeleri pikselleri hedef renklere tamamlar.</p></div><button id="closeArtworkDesignerBtn" aria-label="Kapat">×</button></div>
+      <div class="artwork-designer-layout">
+        <div class="artwork-designer-canvas-wrap"><canvas id="artworkDesignerCanvas" width="576" height="576"></canvas><small>Sol tık/dokun: boya · Sağ tık: sil · Sürükleyerek çizebilirsin.</small></div>
+        <aside class="artwork-designer-tools">
+          <label><span>ŞABLON ADI</span><input id="artworkDesignerName" maxlength="48" placeholder="Örn. CRUSH logosu" /></label>
+          <label><span>BOYUT</span><select id="artworkDesignerSize"><option value="16">16 × 16</option><option value="24" selected>24 × 24</option><option value="32">32 × 32</option><option value="40">40 × 40</option><option value="48">48 × 48</option></select></label>
+          <div><span class="designer-label">RENK</span><div class="artwork-designer-palette" id="artworkDesignerPalette"></div></div>
+          <div class="designer-actions"><button id="artworkDesignerEraser" class="secondary-btn">SİLGİ</button><button id="artworkDesignerClear" class="secondary-btn">TEMİZLE</button></div>
+          <div class="designer-anchor"><small>HARİTA MERKEZİ</small><strong id="artworkDesignerAnchor">Önce haritada bir piksel seç</strong></div>
+          <button id="saveArtworkDesignerBtn" class="place-btn small">ŞABLONU KAYDET</button>
+        </aside>
+      </div>
     </div>
   </div>
 
@@ -372,9 +398,14 @@
   </div>
 
   <nav class="mobile-nav" id="mobileNav"><button data-mobile="map">⌂<span>Harita</span></button><button data-mobile="panel">▦<span>Paneller</span></button><button data-mobile="team" class="account-only">⚔<span>Takım</span></button><button data-mobile="history">◷<span>Geçmiş</span></button><button data-mobile="account" class="account-only">●<span>Profil</span></button></nav>
+  <div class="leader-music" id="leaderMusic">
+    <div class="leader-music-dot" id="leaderMusicDot"></div><div class="leader-music-copy"><small>LİDER FANDOM PLAYLIST</small><strong id="leaderMusicTitle">Lider bekleniyor</strong><span id="leaderMusicTrack">Playlist hazırlanıyor…</span></div><button id="leaderMusicToggle" type="button">MÜZİĞİ AÇ</button>
+  </div>
+  <div id="leaderYoutubePlayer" class="leader-youtube-player" aria-hidden="true"></div>
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="script.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>

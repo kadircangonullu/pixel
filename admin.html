@@ -9,7 +9,7 @@
 <body>
   <div class="admin-shell">
     <aside class="admin-sidebar">
-      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V20.1</small></div></div>
+      <div class="admin-brand"><span>◆</span><div><h1>FANVERSE</h1><small>ADMIN CENTER · V21</small></div></div>
       <nav>
         <button class="admin-nav active" data-tab="dashboard">GENEL BAKIŞ</button>
         <button class="admin-nav" data-tab="seasons">SEZONLAR</button>
@@ -20,6 +20,7 @@
         <button class="admin-nav" data-tab="history">GEÇMİŞ / ROLLBACK</button>
         <button class="admin-nav" data-tab="awards">SEZON ÖDÜLLERİ</button>
         <button class="admin-nav" data-tab="zones">KORUMALI ALANLAR</button>
+        <button class="admin-nav" data-tab="music">FANDOM MÜZİKLERİ</button>
         <button class="admin-nav" data-tab="logs">MODERASYON LOGU</button>
       </nav>
       <a class="back-link" href="index.html">← HARİTAYA DÖN</a>
@@ -153,6 +154,16 @@
               </div><button id="createZoneBtn" class="primary">ALANI KORUMAYA AL</button>
             </article>
             <article class="panel"><div class="panel-head"><h3>Aktif korumalar</h3><button id="refreshZonesBtn">YENİLE</button></div><div id="zonesList" class="list"></div></article>
+          </div>
+        </section>
+
+
+        <section class="admin-tab" data-panel="music">
+          <div class="admin-grid two">
+            <article class="panel"><div class="panel-head"><div><h3>Fandom playlisti</h3><p class="muted">YouTube video ID ekle. Öndeki fandom değiştiğinde site bu sırayı otomatik oynatır.</p></div></div>
+              <div class="form-grid"><label><span>FANDOM</span><select id="musicTeam"><option value="crush">CRUSH</option><option value="manifest">MANIFEST</option><option value="aura">AURA</option><option value="karm6">KARM6</option><option value="mantra">MANTRA</option><option value="radikal">RADİKAL</option><option value="perma">PERMA</option></select></label><label><span>ŞARKI ADI</span><input id="musicTitle" placeholder="Şarkı adı" /></label><label><span>YOUTUBE VIDEO ID</span><input id="musicVideoId" placeholder="aKGCXYX7jN8" /></label><label><span>SIRA</span><input id="musicPosition" type="number" min="1" value="1" /></label></div><button id="addMusicTrackBtn" class="primary">PLAYLISTE EKLE</button>
+            </article>
+            <article class="panel"><div class="panel-head"><h3>Kayıtlı parçalar</h3><button id="refreshMusicBtn">YENİLE</button></div><div id="musicList" class="list"></div></article>
           </div>
         </section>
 
