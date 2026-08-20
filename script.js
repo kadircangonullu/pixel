@@ -2623,10 +2623,22 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
     document.querySelectorAll(".fv-dock [data-fv-action]").forEach(x=>x.classList.remove("active"));
   }
   function openLeft(action){
-    body.classList.remove("fv-right-open"); body.classList.add("fv-left-open");
+    body.classList.remove("fv-right-open");
+    body.classList.add("fv-left-open");
     markActive(action);
-    if(action==="stats") document.querySelector(".sidebar .stats-block")?.scrollIntoView({behavior:"smooth",block:"start"});
-    else document.getElementById("teamList")?.scrollIntoView({behavior:"smooth",block:"start"});
+
+    // On phones the drawer moves in from off-screen. scrollIntoView while it is
+    // still transforming is unreliable on Chrome/Samsung Internet, so scroll
+    // the drawer itself after the first paint instead.
+    const sidebar=document.querySelector(".sidebar");
+    const target=action==="stats"
+      ? document.querySelector(".sidebar .stats-block")
+      : document.getElementById("teamList");
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(!sidebar||!target) return;
+      const top=Math.max(0,target.offsetTop-86);
+      sidebar.scrollTo({top,behavior:window.innerWidth<=700?"auto":"smooth"});
+    }));
   }
   function openRight(action,selector){
     body.classList.remove("fv-left-open"); body.classList.add("fv-right-open");
@@ -2668,22 +2680,28 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
     if(guestAuth) guestAuth.classList.toggle("hidden",!!authUser);
   }
 
-  document.querySelectorAll("[data-fv-action]").forEach(btn=>btn.addEventListener("click",e=>{
+  document.addEventListener("click",e=>{
+    const btn=e.target.closest?.("[data-fv-action]");
+    if(!btn) return;
     const action=btn.dataset.fvAction;
     if(btn.tagName==="A") return;
     e.preventDefault();
+    e.stopPropagation();
     if(action==="map"){closeDrawers();resetViewToTurkey?.();return;}
     if(action==="teams"||action==="stats"){openLeft(action);return;}
     if(action==="regions"){openRight(action,"#regionBoard");return;}
     if(action==="ranking"){openRight(action,"#playerRankingCard");return;}
     if(action==="defense"){openRight(action,".attack-center-card");setView("defense");return;}
     closeDrawers();
-    if(action==="teamcenter") openTeamCenter?.();
+    if(action==="teamcenter"){
+      if(typeof openTeamCenter==="function") openTeamCenter();
+      else showToast?.("Takım merkezi hazırlanamadı.");
+    }
     else if(action==="notifications") openNotifications?.();
     else if(action==="seasons") openSeasonArchive?.();
     else if(action==="history") openHistoryModal?.();
     else if(action==="guide") openGuide?.();
-  }));
+  });
   document.getElementById("floatingProfileBtn")?.addEventListener("click",()=>{closeDrawers();openProfileModal?.();});
   document.getElementById("floatingGuestAuthBtn")?.addEventListener("click",()=>{closeDrawers();openAuthModal?.();document.getElementById("authEmail")?.focus();});
   leftClose?.addEventListener("click",closeDrawers); rightClose?.addEventListener("click",closeDrawers); scrim?.addEventListener("click",closeDrawers);
