@@ -710,3 +710,59 @@ body.fv-map-ui.fv-left-open .fv-drawer-scrim,body.fv-map-ui.fv-right-open .fv-dr
   body.fv-map-ui .canvas-header{bottom:calc(65px + env(safe-area-inset-bottom))!important}.fv-map-ui .view-btn{min-width:72px!important;height:34px!important;padding:0 10px!important;font-size:7px!important}.fv-map-ui .pixel-controls{display:none!important}.fv-map-ui .map-tip{display:none!important}.fv-map-ui .hover-region{top:calc(59px + env(safe-area-inset-top))!important;left:10px!important;max-width:calc(100vw - 120px)}.fv-map-ui .minimap-wrap{right:10px!important;bottom:calc(118px + env(safe-area-inset-bottom))!important;width:128px!important;height:58px!important}
   body.fv-map-ui .sidebar,body.fv-map-ui .right-panel{left:8px!important;right:8px!important;top:calc(8px + env(safe-area-inset-top))!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;width:auto!important;border-radius:22px!important}body.fv-map-ui .sidebar{transform:translateX(calc(-100% - 20px))!important}body.fv-map-ui .right-panel{transform:translateX(calc(100% + 20px))!important}body.fv-map-ui.fv-left-open .sidebar,body.fv-map-ui.fv-right-open .right-panel{transform:translateX(0)!important}.fv-left-close{left:auto;right:22px;top:calc(22px + env(safe-area-inset-top))}.fv-right-close{right:22px;top:calc(22px + env(safe-area-inset-top))}
 }
+
+
+/* ============================================================
+   V23 · Mobile map-first pass + compact placement + guest auth
+   ============================================================ */
+.fv-guest-auth{pointer-events:auto;height:40px;padding:0 14px;border:1px solid rgba(148,163,184,.36);border-radius:999px;background:rgba(255,255,255,.94);box-shadow:0 8px 28px rgba(15,23,42,.10);color:#243047;font-size:8px;font-weight:950;letter-spacing:.65px;cursor:pointer;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.fv-guest-auth:hover{background:#172033;color:#fff}.fv-guest-auth.hidden{display:none!important}
+
+/* The pixel action surface floats over the map on every viewport. */
+body.fv-map-ui .mobile-pixel-sheet{display:grid!important;position:fixed!important;z-index:58!important;left:50%!important;bottom:82px!important;width:min(620px,calc(100vw - 200px))!important;grid-template-columns:minmax(150px,1fr) minmax(140px,auto) auto!important;align-items:center!important;gap:10px!important;max-height:none!important;margin:0!important;padding:9px 10px!important;border:1px solid rgba(148,163,184,.34)!important;border-radius:18px!important;background:rgba(255,255,255,.96)!important;box-shadow:0 14px 38px rgba(15,23,42,.16)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;overflow:visible!important;transform:translate(-50%,14px)!important;transition:opacity .18s ease,transform .2s ease,visibility .18s!important}
+body.fv-map-ui .mobile-pixel-sheet.show{opacity:1!important;visibility:visible!important;pointer-events:auto!important;transform:translate(-50%,0)!important}
+body.fv-map-ui .mobile-pixel-sheet-main{display:grid!important;grid-template-columns:36px minmax(0,1fr)!important;align-items:center!important;gap:9px!important;min-width:0!important}
+body.fv-map-ui .mobile-pixel-sheet-main>div{display:flex!important;flex-direction:column!important;min-width:0!important}
+body.fv-map-ui .mobile-pixel-sheet-main small{font-size:6px!important;font-weight:950!important;letter-spacing:.8px!important;color:#d92f79!important}
+body.fv-map-ui .mobile-pixel-sheet-main strong{font-size:10px!important;color:#172033!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body.fv-map-ui .mobile-pixel-sheet-main span{font-size:7px!important;color:#7b8798!important}
+body.fv-map-ui .mobile-pixel-sheet-swatch{width:36px!important;height:36px!important;border-radius:11px!important}
+body.fv-map-ui .mobile-pixel-sheet-actions{display:flex!important;gap:6px!important;padding-right:24px!important}
+body.fv-map-ui .mobile-pixel-sheet-actions button{height:36px!important;border-radius:11px!important;padding:0 12px!important;font-size:7px!important;font-weight:950!important}
+body.fv-map-ui .mobile-pixel-sheet-close{right:6px!important;top:6px!important}
+.fv-compact-palette{display:flex;align-items:center;gap:4px;overflow-x:auto;max-width:230px;padding:3px 2px;scrollbar-width:none}.fv-compact-palette::-webkit-scrollbar{display:none}.fv-compact-palette button{flex:0 0 21px;width:21px;height:21px;padding:0;border:2px solid #fff;border-radius:7px;background:var(--fv-color);box-shadow:0 0 0 1px rgba(100,116,139,.26);cursor:pointer}.fv-compact-palette button.active{box-shadow:0 0 0 2px #172033;transform:scale(1.05)}
+
+/* Old desktop palette is no longer the primary placement surface. */
+body.fv-map-ui .pixel-controls{display:none!important}
+
+@media(max-width:700px){
+  body.fv-map-ui .canvas-wrapper{inset:0!important}
+  body.fv-map-ui .fv-map-hud{left:8px;right:8px;top:calc(7px + env(safe-area-inset-top));align-items:flex-start}
+  .fv-brand-chip{width:42px!important;height:42px!important;padding:6px!important;border-radius:50%!important}.fv-brand-chip>span:last-child{display:none!important}.fv-brand-mark{width:30px!important;height:30px!important;border-radius:50%!important}
+  .fv-hud-right{gap:5px!important}.fv-guest-auth{height:38px;padding:0 12px;font-size:7px}.fv-profile-chip{width:40px!important;height:40px!important}
+
+  /* Right system tools stay compact and away from the actual map interaction area. */
+  .fv-dock-right{right:8px!important;top:calc(56px + env(safe-area-inset-top))!important;bottom:auto!important;gap:1px!important;padding:4px!important;border-radius:22px!important}
+  .fv-dock-right button,.fv-dock-right a{width:36px!important;height:36px!important}.fv-dock-right svg{width:16px!important;height:16px!important}
+
+  /* Main gameplay dock becomes one clean bottom pill. */
+  .fv-dock-left{left:50%!important;right:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;transform:translateX(-50%)!important;gap:1px!important;padding:4px!important;border-radius:18px!important}
+  .fv-dock-left button{width:38px!important;height:38px!important}.fv-dock-left svg{width:16px!important;height:16px!important}
+
+  /* Mode selector sits above the main dock instead of colliding with minimap. */
+  body.fv-map-ui .canvas-header{left:50%!important;bottom:calc(58px + env(safe-area-inset-bottom))!important;width:auto!important;transform:translateX(-50%)!important}
+  body.fv-map-ui .view-switch{gap:2px!important;padding:4px!important;border-radius:16px!important}
+  body.fv-map-ui .view-btn{min-width:68px!important;height:31px!important;padding:0 8px!important;font-size:6.5px!important;letter-spacing:.3px!important}
+
+  /* A full-country minimap is redundant on a 400px-wide screen and was covering controls. */
+  body.fv-map-ui .minimap-wrap{display:none!important}
+  body.fv-map-ui .hover-region{top:calc(58px + env(safe-area-inset-top))!important;left:8px!important;max-width:calc(100vw - 66px)!important;padding:7px 10px!important;font-size:7px!important}
+
+  /* Placement card rises above mode + main dock and becomes thumb-friendly. */
+  body.fv-map-ui .mobile-pixel-sheet{left:8px!important;right:8px!important;bottom:calc(102px + env(safe-area-inset-bottom))!important;width:auto!important;grid-template-columns:1fr!important;gap:7px!important;padding:9px!important;border-radius:17px!important;transform:translateY(12px)!important}
+  body.fv-map-ui .mobile-pixel-sheet.show{transform:translateY(0)!important}
+  body.fv-map-ui .mobile-pixel-sheet-main{padding-right:24px!important}.fv-compact-palette{order:2;max-width:none!important;width:100%!important;justify-content:flex-start!important}.fv-compact-palette button{flex-basis:24px;width:24px;height:24px;border-radius:8px}
+  body.fv-map-ui .mobile-pixel-sheet-actions{order:3;padding:0!important;display:grid!important;grid-template-columns:1fr 1.45fr!important;width:100%!important}.mobile-pixel-sheet-actions button{width:100%!important}
+
+  body.fv-map-ui .sidebar,body.fv-map-ui .right-panel{left:6px!important;right:6px!important;top:calc(6px + env(safe-area-inset-top))!important;bottom:calc(6px + env(safe-area-inset-bottom))!important;border-radius:20px!important}
+}

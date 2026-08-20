@@ -1233,7 +1233,15 @@ function setZoom(value, cx = canvas.clientWidth / 2, cy = canvas.clientHeight / 
 function resetViewToTurkey() {
   const r = canvas.getBoundingClientRect();
   const zoomX = r.width / (WORLD_WIDTH + 16), zoomY = r.height / (WORLD_HEIGHT + 20);
-  camera.zoom = Math.max(effectiveMinZoom(), Math.min(4.2, Math.min(zoomX, zoomY)));
+  const containZoom = Math.max(effectiveMinZoom(), Math.min(4.2, Math.min(zoomX, zoomY)));
+  if (window.innerWidth <= 700) {
+    // On a portrait phone, fitting all of Turkey makes the actual map a thin strip.
+    // Start closer, Wplace-style: the map fills the useful viewport and the user pans.
+    const mobileMapZoom = Math.max(.58, Math.min(.82, r.width / (WORLD_WIDTH * .42)));
+    camera.zoom = Math.max(containZoom, mobileMapZoom);
+  } else {
+    camera.zoom = containZoom;
+  }
   camera.x = (WORLD_WIDTH - r.width / camera.zoom) / 2;
   camera.y = (WORLD_HEIGHT - r.height / camera.zoom) / 2;
   clampCamera(); scheduleDraw();
@@ -2625,6 +2633,18 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
     const btn=document.querySelector(`.view-btn[data-view="${mode}"]`);
     btn?.click();
   }
+  function renderFloatingCompactPalette(){
+    const wrap=document.getElementById("fvCompactPalette");
+    if(!wrap) return;
+    wrap.innerHTML=paletteColors.map(color=>`<button type="button" data-fv-color="${color}" aria-label="${color}" style="--fv-color:${color}" class="${String(color).toLowerCase()===String(selectedColor).toLowerCase()?"active":""}"></button>`).join("");
+    wrap.querySelectorAll("[data-fv-color]").forEach(btn=>btn.addEventListener("click",()=>{
+      selectedColor=btn.dataset.fvColor;
+      document.querySelectorAll(".color-btn").forEach((b,k)=>b.classList.toggle("active",String(paletteColors[k]).toLowerCase()===String(selectedColor).toLowerCase()));
+      renderFloatingCompactPalette();
+      renderMobilePixelSheet?.();
+      scheduleDraw?.();
+    }));
+  }
   function syncFloatingIdentity(){
     const online=document.getElementById("onlineCount"), floatingOnline=document.getElementById("floatingOnlineCount");
     if(online&&floatingOnline&&floatingOnline.textContent!==online.textContent) floatingOnline.textContent=online.textContent;
@@ -2637,6 +2657,8 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
     }
     const admin=document.getElementById("adminPanelBtn"), floatingAdmin=document.getElementById("floatingAdminBtn");
     if(admin&&floatingAdmin) floatingAdmin.classList.toggle("hidden",admin.classList.contains("hidden"));
+    const guestAuth=document.getElementById("floatingGuestAuthBtn");
+    if(guestAuth) guestAuth.classList.toggle("hidden",!!authUser);
   }
 
   document.querySelectorAll("[data-fv-action]").forEach(btn=>btn.addEventListener("click",e=>{
@@ -2656,9 +2678,11 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
     else if(action==="guide") openGuide?.();
   }));
   document.getElementById("floatingProfileBtn")?.addEventListener("click",()=>{closeDrawers();openProfileModal?.();});
+  document.getElementById("floatingGuestAuthBtn")?.addEventListener("click",()=>{closeDrawers();openAuthModal?.();document.getElementById("authEmail")?.focus();});
   leftClose?.addEventListener("click",closeDrawers); rightClose?.addEventListener("click",closeDrawers); scrim?.addEventListener("click",closeDrawers);
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&(body.classList.contains("fv-left-open")||body.classList.contains("fv-right-open"))) closeDrawers();});
   const obs=new MutationObserver(syncFloatingIdentity);
   [document.getElementById("onlineCount"),document.getElementById("profileAvatar"),document.getElementById("notificationBadge"),document.getElementById("adminPanelBtn")].filter(Boolean).forEach(el=>obs.observe(el,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["class"]}));
+  renderFloatingCompactPalette();
   syncFloatingIdentity();
 })();
