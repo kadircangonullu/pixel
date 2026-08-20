@@ -2591,3 +2591,74 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
   document.querySelectorAll('.mobile-nav [data-mobile]:not([data-mobile="panel"])').forEach(btn=>btn.addEventListener("click",closeMobilePanel));
   window.addEventListener("resize",()=>{if(window.innerWidth>700)closeMobilePanel();},{passive:true});
 })();;
+
+// ============================================================
+// V22 · Full-screen map / floating dock controller
+// ============================================================
+(function initFloatingMapShell(){
+  const body=document.body;
+  if(!body?.classList.contains("fv-map-ui")) return;
+  const leftClose=document.getElementById("fvLeftClose");
+  const rightClose=document.getElementById("fvRightClose");
+  const scrim=document.getElementById("fvDrawerScrim");
+  const rightPanel=document.getElementById("rightPanel");
+
+  function closeDrawers(){
+    body.classList.remove("fv-left-open","fv-right-open");
+    document.querySelectorAll(".fv-dock [data-fv-action]").forEach(x=>x.classList.remove("active"));
+  }
+  function openLeft(action){
+    body.classList.remove("fv-right-open"); body.classList.add("fv-left-open");
+    markActive(action);
+    if(action==="stats") document.querySelector(".sidebar .stats-block")?.scrollIntoView({behavior:"smooth",block:"start"});
+    else document.getElementById("teamList")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  function openRight(action,selector){
+    body.classList.remove("fv-left-open"); body.classList.add("fv-right-open");
+    markActive(action);
+    requestAnimationFrame(()=>document.querySelector(selector)?.scrollIntoView({behavior:"smooth",block:"start"}));
+  }
+  function markActive(action){
+    document.querySelectorAll(".fv-dock [data-fv-action]").forEach(x=>x.classList.toggle("active",x.dataset.fvAction===action));
+  }
+  function setView(mode){
+    const btn=document.querySelector(`.view-btn[data-view="${mode}"]`);
+    btn?.click();
+  }
+  function syncFloatingIdentity(){
+    const online=document.getElementById("onlineCount"), floatingOnline=document.getElementById("floatingOnlineCount");
+    if(online&&floatingOnline&&floatingOnline.textContent!==online.textContent) floatingOnline.textContent=online.textContent;
+    const avatar=document.getElementById("profileAvatar"), floatingAvatar=document.getElementById("floatingProfileAvatar");
+    if(avatar&&floatingAvatar&&floatingAvatar.textContent!==avatar.textContent) floatingAvatar.textContent=avatar.textContent;
+    const badge=document.getElementById("notificationBadge"), floatingBadge=document.getElementById("floatingNotificationBadge");
+    if(badge&&floatingBadge){
+      floatingBadge.textContent=badge.textContent;
+      floatingBadge.classList.toggle("hidden",badge.classList.contains("hidden")||badge.textContent==="0");
+    }
+    const admin=document.getElementById("adminPanelBtn"), floatingAdmin=document.getElementById("floatingAdminBtn");
+    if(admin&&floatingAdmin) floatingAdmin.classList.toggle("hidden",admin.classList.contains("hidden"));
+  }
+
+  document.querySelectorAll("[data-fv-action]").forEach(btn=>btn.addEventListener("click",e=>{
+    const action=btn.dataset.fvAction;
+    if(btn.tagName==="A") return;
+    e.preventDefault();
+    if(action==="map"){closeDrawers();resetViewToTurkey?.();return;}
+    if(action==="teams"||action==="stats"){openLeft(action);return;}
+    if(action==="regions"){openRight(action,"#regionBoard");return;}
+    if(action==="ranking"){openRight(action,"#playerRankingCard");return;}
+    if(action==="defense"){openRight(action,".attack-center-card");setView("defense");return;}
+    closeDrawers();
+    if(action==="teamcenter") openTeamCenter?.();
+    else if(action==="notifications") openNotifications?.();
+    else if(action==="seasons") openSeasonArchive?.();
+    else if(action==="history") openHistoryModal?.();
+    else if(action==="guide") openGuide?.();
+  }));
+  document.getElementById("floatingProfileBtn")?.addEventListener("click",()=>{closeDrawers();openProfileModal?.();});
+  leftClose?.addEventListener("click",closeDrawers); rightClose?.addEventListener("click",closeDrawers); scrim?.addEventListener("click",closeDrawers);
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&(body.classList.contains("fv-left-open")||body.classList.contains("fv-right-open"))) closeDrawers();});
+  const obs=new MutationObserver(syncFloatingIdentity);
+  [document.getElementById("onlineCount"),document.getElementById("profileAvatar"),document.getElementById("notificationBadge"),document.getElementById("adminPanelBtn")].filter(Boolean).forEach(el=>obs.observe(el,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["class"]}));
+  syncFloatingIdentity();
+})();

@@ -6,7 +6,38 @@
   <title>FANVERSE — Türkiye Fandom Savaşları</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body class="spectator-mode">
+<body class="spectator-mode fv-map-ui">
+  <div class="fv-map-hud" aria-label="Fanverse harita üst bilgisi">
+    <button class="fv-brand-chip" type="button" data-fv-action="map" aria-label="Haritayı ortala">
+      <span class="fv-brand-mark">◆</span><span><strong>FANVERSE</strong><small>TÜRKİYE · CANLI</small></span>
+    </button>
+    <div class="fv-hud-right">
+      <span class="fv-online-chip"><i></i><strong id="floatingOnlineCount">—</strong><small>aktif</small></span>
+      <button class="fv-profile-chip account-only" id="floatingProfileBtn" type="button" aria-label="Profili aç"><span id="floatingProfileAvatar">F</span></button>
+    </div>
+  </div>
+
+  <div class="fv-dock fv-dock-left" aria-label="Oyun araçları">
+    <button type="button" data-fv-action="teams" data-tip="Fandomlar" aria-label="Fandomlar"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 19c.5-4 2.5-6 5.5-6s5 2 5.5 6M14 14c3.5-.5 5.5 1.2 6.2 4.5"/></svg></button>
+    <button type="button" data-fv-action="stats" data-tip="Canlı istatistik" aria-label="Canlı istatistik"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V5M19 19v-8"/></svg></button>
+    <button type="button" data-fv-action="regions" data-tip="Bölgeler" aria-label="Bölgeler"><svg viewBox="0 0 24 24"><path d="m4 6 5-2 6 2.5L20 4v14l-5 2-6-2.5L4 20V6Z"/><path d="M9 4v13.5M15 6.5V20"/></svg></button>
+    <button type="button" data-fv-action="ranking" data-tip="Liderlik" aria-label="Liderlik"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v4c0 4-2 7-5 7S7 12 7 8V4Z"/><path d="M7 6H4v2c0 2 1.2 3.5 3.3 4M17 6h3v2c0 2-1.2 3.5-3.3 4"/></svg></button>
+    <button type="button" class="account-only" data-fv-action="teamcenter" data-tip="Takım merkezi" aria-label="Takım merkezi"><svg viewBox="0 0 24 24"><path d="m8 4 8 16M16 4 8 20"/><path d="M5 7h5M14 7h5M5 17h5M14 17h5"/></svg></button>
+    <button type="button" data-fv-action="defense" data-tip="Savunma" aria-label="Savunma merkezi"><svg viewBox="0 0 24 24"><path d="M12 3 19 6v5c0 4.5-2.5 8-7 10-4.5-2-7-5.5-7-10V6l7-3Z"/><path d="m9 12 2 2 4-5"/></svg></button>
+  </div>
+
+  <div class="fv-dock fv-dock-right" aria-label="Hesap ve sistem araçları">
+    <button type="button" class="account-only" data-fv-action="notifications" data-tip="Bildirimler" aria-label="Bildirimler"><svg viewBox="0 0 24 24"><path d="M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5L6 17Z"/><path d="M10 20h4"/></svg><span class="fv-dock-badge hidden" id="floatingNotificationBadge">0</span></button>
+    <button type="button" data-fv-action="seasons" data-tip="Sezonlar" aria-label="Sezonlar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></button>
+    <button type="button" data-fv-action="history" data-tip="Geçmiş" aria-label="Geçmiş"><svg viewBox="0 0 24 24"><path d="M4.5 9A8 8 0 1 1 5 16"/><path d="M4.5 4.5V9H9M12 7.5V12l3 2"/></svg></button>
+    <button type="button" data-fv-action="guide" data-tip="Rehber" aria-label="Rehber"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.7 2.7 0 1 1 4.8 1.7c-1.3 1.3-2.3 1.6-2.3 3.3M12 17h.01"/></svg></button>
+    <a class="account-only hidden" id="floatingAdminBtn" href="admin.html" data-tip="Admin" aria-label="Admin paneli"><svg viewBox="0 0 24 24"><path d="M12 3 20 7v5c0 4.5-2.7 7.3-8 9-5.3-1.7-8-4.5-8-9V7l8-4Z"/><path d="M9 12h6M12 9v6"/></svg></a>
+  </div>
+
+  <div class="fv-drawer-scrim" id="fvDrawerScrim" aria-hidden="true"></div>
+  <button class="fv-drawer-close fv-left-close" id="fvLeftClose" type="button" aria-label="Sol paneli kapat">×</button>
+  <button class="fv-drawer-close fv-right-close" id="fvRightClose" type="button" aria-label="Sağ paneli kapat">×</button>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
