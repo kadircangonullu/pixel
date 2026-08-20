@@ -1118,3 +1118,85 @@ body.fv-map-ui .pixel-controls{display:none!important}
   body.fv-map-ui .fv-dock-left{left:8px!important}
   body.fv-map-ui .fv-dock-right{right:8px!important}
 }
+
+/* ============================================================
+   V27 · Mobile drawer visibility + viewport-safe map mode bar
+   Fixes legacy mobile .sidebar{display:none} and Android bottom clipping.
+   ============================================================ */
+@media (max-width:700px){
+  /* Legacy responsive CSS hid the sidebar entirely. The floating shell uses
+     that same sidebar as the left drawer, so force it back into layout. */
+  body.fv-map-ui .sidebar{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+  }
+  body.fv-map-ui.fv-left-open .sidebar{
+    display:block!important;
+    transform:translateX(0)!important;
+  }
+
+  /* Keep the mode selector attached to the visual viewport rather than the
+     canvas box. This prevents Samsung/Chrome bottom UI from clipping it. */
+  body.fv-map-ui .canvas-header{
+    position:fixed!important;
+    left:50%!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:calc(58px + env(safe-area-inset-bottom))!important;
+    width:min(306px,calc(100vw - 104px))!important;
+    height:44px!important;
+    transform:translateX(-50%)!important;
+    z-index:67!important;
+    overflow:visible!important;
+    pointer-events:none!important;
+  }
+  body.fv-map-ui .canvas-header .canvas-tools{
+    display:block!important;
+    width:100%!important;
+    height:44px!important;
+    pointer-events:auto!important;
+  }
+  body.fv-map-ui .view-switch{
+    width:100%!important;
+    height:44px!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    align-items:center!important;
+    gap:4px!important;
+    padding:5px!important;
+    margin:0!important;
+    box-sizing:border-box!important;
+    border-radius:17px!important;
+  }
+  body.fv-map-ui .view-btn{
+    min-width:0!important;
+    width:100%!important;
+    height:34px!important;
+    padding:0 3px!important;
+    font-size:7px!important;
+    white-space:nowrap!important;
+  }
+
+  /* Placement tray always stays above the now-raised mode selector. */
+  body.fv-map-ui .mobile-pixel-sheet{
+    bottom:calc(116px + env(safe-area-inset-bottom))!important;
+  }
+
+  /* Drawer close button belongs to the drawer edge, not the far opposite
+     side. Keep it reliably tappable above the scrim. */
+  body.fv-map-ui .fv-left-close{
+    left:auto!important;
+    right:22px!important;
+    top:calc(22px + env(safe-area-inset-top))!important;
+    z-index:76!important;
+  }
+}
+
+@media (max-width:380px){
+  body.fv-map-ui .canvas-header{
+    width:min(286px,calc(100vw - 92px))!important;
+    bottom:calc(54px + env(safe-area-inset-bottom))!important;
+  }
+}
