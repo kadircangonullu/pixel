@@ -628,3 +628,22 @@ input,select,textarea{background:#fff!important;color:var(--v21-text)!important;
     font-size:10px!important;
   }
 }
+
+
+/* =========================================================
+   V21.6 · mobile music visibility
+   Keep the compact leader player above the mobile topbar surface.
+   The right 104px remain reserved for notification/profile actions.
+   ========================================================= */
+@media(max-width:700px){
+  .leader-music{
+    z-index:1192!important;
+    top:8px!important;
+    left:10px!important;
+    width:min(230px,calc(100vw - 118px))!important;
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+  }
+}
