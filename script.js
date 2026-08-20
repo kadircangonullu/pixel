@@ -812,7 +812,7 @@ function renderPalette() {
   paletteColors.forEach((color, index) => {
     const button = document.createElement("button");
     button.className = `color-btn ${index === 0 ? "active" : ""}`; button.style.background = color;
-    button.onclick = () => { selectedColor = color; document.querySelectorAll(".color-btn").forEach(b => b.classList.remove("active")); button.classList.add("active"); scheduleDraw(); };
+    button.onclick = () => { selectedColor = color; document.querySelectorAll(".color-btn").forEach(b => b.classList.remove("active")); button.classList.add("active"); if(selectedPixel) updateMobilePixelSheet(selectedPixel.x,selectedPixel.y); scheduleDraw(); };
     palette.appendChild(button);
   });
 }
@@ -1354,10 +1354,29 @@ function updateCooldown() {
   if (left <= 0 && cooldownEnd) { cooldownEnd = 0; localStorage.removeItem(COOLDOWN_STORAGE_KEY); }
   if (left <= 0) { el.textContent = "HAZIR"; placeBtn.disabled = false; }
   else { el.textContent = `00:00:${String(Math.ceil(left / 1000)).padStart(2,"0")}`; placeBtn.disabled = true; }
+  const mobilePlace = document.getElementById("mobilePixelPlaceBtn");
+  if (mobilePlace) { mobilePlace.disabled = placeBtn.disabled; mobilePlace.textContent = left > 0 ? `${Math.ceil(left/1000)} SN` : "YERLEŞTİR"; }
 }
 setInterval(updateCooldown, 250);
 
-function hidePixelInspector() { document.getElementById("pixelInspector")?.classList.add("hidden"); }
+function updateMobilePixelSheet(x=null,y=null) {
+  const sheet = document.getElementById("mobilePixelSheet");
+  if (!sheet) return;
+  const active = Number.isInteger(x) && Number.isInteger(y) && isLand(x,y);
+  sheet.classList.toggle("show", active);
+  if (!active) return;
+  const province = provinceAt(x,y), owner = teamById(ownerAt(x,y));
+  const title = document.getElementById("mobilePixelSheetTitle");
+  const meta = document.getElementById("mobilePixelSheetMeta");
+  const swatch = document.getElementById("mobilePixelSheetSwatch");
+  if (title) title.textContent = province || "Türkiye";
+  if (meta) meta.textContent = `${x}, ${y} · ${owner ? owner.name : "Tarafsız"}`;
+  if (swatch) swatch.style.background = selectedColor;
+}
+function hidePixelInspector() {
+  document.getElementById("pixelInspector")?.classList.add("hidden");
+  updateMobilePixelSheet();
+}
 function renderPixelInspector(x,y) {
   const panel = document.getElementById("pixelInspector"), body = document.getElementById("pixelInspectorBody");
   if (!panel || !body || !isLand(x,y)) return hidePixelInspector();
@@ -1370,8 +1389,12 @@ function renderPixelInspector(x,y) {
     <div class="inspector-cell"><small>HAKİMİYET SAHİBİ</small><strong>${owner ? `<i class="pixel-color-swatch" style="background:${owner.color}"></i>${owner.name}` : "Tarafsız"}</strong></div>
   </div><div class="${selectedTeam && owner && owner.id !== selectedTeam.id ? "foreign-alert" : "foreign-clean"}">${relation}${selectedTeam && owner && owner.id !== selectedTeam.id ? ` · Bu pikseli ${selectedTeam.name} adına yeniden boyayarak geri alabilirsin.` : ""}</div>`;
   panel.classList.remove("hidden");
+  updateMobilePixelSheet(x,y);
 }
-document.getElementById("closeInspectorBtn")?.addEventListener("click", hidePixelInspector);
+document.getElementById("closeInspectorBtn")?.addEventListener("click",()=>{document.getElementById("pixelInspector")?.classList.remove("mobile-detail-open");hidePixelInspector();});
+document.getElementById("mobilePixelSheetClose")?.addEventListener("click",()=>{selectedPixel=null;hidePixelInspector();scheduleDraw();});
+document.getElementById("mobilePixelDetailsBtn")?.addEventListener("click",()=>{if(selectedPixel){const p=document.getElementById("pixelInspector");p?.classList.remove("hidden");p?.classList.add("mobile-detail-open");}});
+document.getElementById("mobilePixelPlaceBtn")?.addEventListener("click",()=>document.getElementById("placePixelBtn")?.click());
 
 
 function setDefenseView() {

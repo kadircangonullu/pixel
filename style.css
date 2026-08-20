@@ -375,3 +375,61 @@ input,select,textarea{background:#fff!important;color:var(--v21-text)!important;
   .mobile-nav button{border-radius:13px!important;color:#718096!important;font-size:18px!important}.mobile-nav button span{font-size:8px!important}.mobile-nav button.active{background:#fff0f7!important;color:#d92f79!important}
   .right-panel{bottom:calc(68px + env(safe-area-inset-bottom))!important;border-radius:22px 22px 0 0!important;background:#f7f9fc!important}.mobile-panel-head{border-radius:22px 22px 0 0!important}
 }
+
+
+/* =========================================================
+   V21.3 · app-like mobile navigation + motion + pixel action sheet
+   ========================================================= */
+.mobile-nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.mobile-nav button.active svg{transform:translateY(-1px) scale(1.06)}
+.mobile-nav button{transition:background-color .2s ease,color .2s ease,transform .16s ease}
+.mobile-nav button:active{transform:scale(.96)}
+
+/* Shared modal/panel entrance polish. */
+.right-panel,.profile-modal-card,.season-modal-card,.guide-card,.history-card,.team-center-card,.notifications-card,.leaderboard-modal-card,.artwork-designer-card,.confirm-card{will-change:transform,opacity}
+@keyframes fanverseSheetIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes fanverseFadeIn{from{opacity:0}to{opacity:1}}
+.confirm-modal:not(.hidden),.profile-modal:not(.hidden),.season-modal:not(.hidden),.guide-modal:not(.hidden),.history-modal:not(.hidden),.team-center-modal:not(.hidden),.notifications-modal:not(.hidden),.leaderboard-modal:not(.hidden),.artwork-designer-modal:not(.hidden){animation:fanverseFadeIn .18s ease both}
+.confirm-modal:not(.hidden) .confirm-card,.profile-modal:not(.hidden) .profile-modal-card,.season-modal:not(.hidden) .season-modal-card,.guide-modal:not(.hidden) .guide-card,.history-modal:not(.hidden) .history-card,.team-center-modal:not(.hidden) .team-center-card,.notifications-modal:not(.hidden) .notifications-card,.leaderboard-modal:not(.hidden) .leaderboard-modal-card,.artwork-designer-modal:not(.hidden) .artwork-designer-card{animation:fanverseSheetIn .24s cubic-bezier(.2,.8,.2,1) both}
+
+.mobile-pixel-sheet{display:none}
+
+@media(max-width:700px){
+  /* Navigation behaves like a real app tab bar. */
+  .mobile-nav{gap:4px!important;padding-left:9px!important;padding-right:9px!important}
+  .mobile-nav button{font-size:0!important;gap:4px!important;position:relative;overflow:hidden}
+  .mobile-nav button span{font-size:9px!important;font-weight:750!important;letter-spacing:.1px!important}
+  .mobile-nav button.active:after{content:"";position:absolute;top:4px;left:50%;width:18px;height:3px;border-radius:999px;background:#f43f91;transform:translateX(-50%)}
+
+  /* Bottom sheet has a backdrop-like elevation and smoother travel. */
+  .right-panel{transition:transform .34s cubic-bezier(.2,.82,.2,1),opacity .22s ease!important;transform:translateY(105%)!important;opacity:.35!important}
+  .right-panel.mobile-open{transform:translateY(0)!important;opacity:1!important}
+  .mobile-panel-head:before{content:"";position:absolute;top:7px;left:50%;width:42px;height:4px;border-radius:999px;background:#dbe3ec;transform:translateX(-50%)}
+  .mobile-panel-head{padding-top:18px!important}
+
+  /* Full inspector is available through DETAY, but the default tap surface is this compact contextual sheet. */
+  .pixel-inspector{display:none!important}
+  .pixel-inspector:not(.hidden).mobile-detail-open{display:block!important}
+  .mobile-pixel-sheet{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;max-height:0;opacity:0;overflow:hidden;padding:0 12px;margin:0 9px;background:rgba(255,255,255,.98);border:0 solid #e1e8ef;border-radius:17px;box-shadow:0 12px 30px rgba(51,65,85,.13);transform:translateY(12px);transition:max-height .28s cubic-bezier(.2,.8,.2,1),opacity .2s ease,transform .28s cubic-bezier(.2,.8,.2,1),padding .28s ease,margin .28s ease,border-width .28s ease;position:relative;z-index:12}
+  .mobile-pixel-sheet.show{max-height:92px;opacity:1;transform:translateY(0);padding:9px 10px;margin:8px 9px;border-width:1px}
+  .mobile-pixel-sheet-main{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:9px;min-width:0}
+  .mobile-pixel-sheet-main>div{display:flex;flex-direction:column;min-width:0}
+  .mobile-pixel-sheet-main small{font-size:6px;font-weight:900;letter-spacing:.8px;color:#f43f91}
+  .mobile-pixel-sheet-main strong{font-size:11px;color:#172033;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .mobile-pixel-sheet-main span{font-size:7px;color:#7b8798;margin-top:2px}
+  .mobile-pixel-sheet-swatch{width:34px;height:34px;border-radius:10px;border:2px solid #fff;box-shadow:0 0 0 1px #d9e2eb,0 5px 12px rgba(51,65,85,.10)}
+  .mobile-pixel-sheet-actions{display:flex;gap:6px;padding-right:25px}
+  .mobile-pixel-sheet-actions button{height:34px;border-radius:10px;border:1px solid #dce5ee;background:#f7f9fc;color:#526176;font-size:7px;font-weight:900;padding:0 10px;cursor:pointer}
+  .mobile-pixel-sheet-actions button.primary{background:linear-gradient(135deg,#f43f91,#df2f80);border-color:transparent;color:#fff;box-shadow:0 6px 15px rgba(244,63,145,.18)}
+  .mobile-pixel-sheet-actions button:disabled{opacity:.45;box-shadow:none}
+  .mobile-pixel-sheet-close{position:absolute;right:7px;top:7px;width:24px;height:24px;border:0;background:transparent;color:#8a96a6;font-size:18px;display:grid;place-items:center;border-radius:50%}
+
+  /* Keep the mobile map the visual hero while still showing a selected action. */
+  .canvas-section:has(.mobile-pixel-sheet.show) .canvas-wrapper{min-height:180px!important}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .right-panel,.mobile-pixel-sheet,.mobile-nav button,.mobile-nav svg{transition:none!important}
+  .confirm-modal:not(.hidden),.profile-modal:not(.hidden),.season-modal:not(.hidden),.guide-modal:not(.hidden),.history-modal:not(.hidden),.team-center-modal:not(.hidden),.notifications-modal:not(.hidden),.leaderboard-modal:not(.hidden),.artwork-designer-modal:not(.hidden),
+  .confirm-modal:not(.hidden) .confirm-card,.profile-modal:not(.hidden) .profile-modal-card,.season-modal:not(.hidden) .season-modal-card,.guide-modal:not(.hidden) .guide-card,.history-modal:not(.hidden) .history-card,.team-center-modal:not(.hidden) .team-center-card,.notifications-modal:not(.hidden) .notifications-card,.leaderboard-modal:not(.hidden) .leaderboard-modal-card,.artwork-designer-modal:not(.hidden) .artwork-designer-card{animation:none!important}
+}
