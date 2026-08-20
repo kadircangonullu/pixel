@@ -439,27 +439,52 @@ async function loadTurkeyMap() {
 }
 
 function healProvinceSeams() {
-  // GeoJSON polygons occasionally leave single raster cells between neighbouring provinces.
-  // Only bridge cells clearly trapped between land, so coastlines stay intact.
-  for (let pass = 0; pass < 2; pass++) {
-    const fixes = [];
-    for (let y = 1; y < WORLD_HEIGHT - 1; y++) {
-      for (let x = 1; x < WORLD_WIDTH - 1; x++) {
-        const i = idx(x,y); if (provinceIndexGrid[i]) continue;
-        const n = [provinceIndexGrid[idx(x-1,y)], provinceIndexGrid[idx(x+1,y)], provinceIndexGrid[idx(x,y-1)], provinceIndexGrid[idx(x,y+1)], provinceIndexGrid[idx(x-1,y-1)], provinceIndexGrid[idx(x+1,y-1)], provinceIndexGrid[idx(x-1,y+1)], provinceIndexGrid[idx(x+1,y+1)]];
-        const orthBridge = (n[0] && n[1]) || (n[2] && n[3]);
-        const landNeighbors = n.filter(Boolean);
-        if (!orthBridge && landNeighbors.length < 6) continue;
-        const freq = new Map(); for (const v of landNeighbors) freq.set(v,(freq.get(v)||0)+1);
-        const winner = [...freq.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0];
-        if (winner) fixes.push([i,winner]);
-      }
+  // Only repair tiny gaps that sit BETWEEN TWO DIFFERENT provinces.
+  // Never fill water that separates two parts of the SAME province (e.g. İstanbul Boğazı).
+  // A single conservative pass avoids expanding coastlines or narrow channels.
+  const fixes = [];
+  for (let y = 1; y < WORLD_HEIGHT - 1; y++) {
+    for (let x = 1; x < WORLD_WIDTH - 1; x++) {
+      const i = idx(x, y);
+      if (provinceIndexGrid[i]) continue;
+
+      const n = [
+        provinceIndexGrid[idx(x - 1, y)], provinceIndexGrid[idx(x + 1, y)],
+        provinceIndexGrid[idx(x, y - 1)], provinceIndexGrid[idx(x, y + 1)],
+        provinceIndexGrid[idx(x - 1, y - 1)], provinceIndexGrid[idx(x + 1, y - 1)],
+        provinceIndexGrid[idx(x - 1, y + 1)], provinceIndexGrid[idx(x + 1, y + 1)]
+      ];
+      const landNeighbors = n.filter(Boolean);
+      const distinct = [...new Set(landNeighbors)];
+      const orthBridge = (n[0] && n[1] && n[0] !== n[1]) || (n[2] && n[3] && n[2] !== n[3]);
+
+      // Require strong surrounding land AND at least two different provinces.
+      // This fixes raster seams but preserves same-province waterways and bays.
+      if (distinct.length < 2) continue;
+      if (!orthBridge && landNeighbors.length < 6) continue;
+      if (orthBridge && landNeighbors.length < 4) continue;
+
+      const freq = new Map();
+      for (const v of landNeighbors) freq.set(v, (freq.get(v) || 0) + 1);
+      const winner = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (winner) fixes.push([i, winner]);
     }
-    for (const [i,winner] of fixes) { provinceIndexGrid[i]=winner; colorGrid[i]=MATERIAL_LAND; }
-    if (!fixes.length) break;
   }
-  provinceCellTotals.clear(); totalPlayablePixels=0;
-  for (let i=0;i<CELL_COUNT;i++) { const pi=provinceIndexGrid[i]; if(!pi) continue; const name=provinceNamesByIndex[pi]; provinceCellTotals.set(name,(provinceCellTotals.get(name)||0)+1); totalPlayablePixels++; }
+
+  for (const [i, winner] of fixes) {
+    provinceIndexGrid[i] = winner;
+    colorGrid[i] = MATERIAL_LAND;
+  }
+
+  provinceCellTotals.clear();
+  totalPlayablePixels = 0;
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const pi = provinceIndexGrid[i];
+    if (!pi) continue;
+    const name = provinceNamesByIndex[pi];
+    provinceCellTotals.set(name, (provinceCellTotals.get(name) || 0) + 1);
+    totalPlayablePixels++;
+  }
 }
 
 function rasterizeProvinces() {

@@ -252,3 +252,71 @@ input,select,textarea{background:#fff!important;color:var(--v21-text)!important;
 .artwork-designer-card{width:min(980px,97vw);max-height:92vh;overflow:auto;padding:22px;border:1px solid var(--v21-border);border-radius:20px}.artwork-designer-layout{display:grid;grid-template-columns:minmax(300px,1fr) 250px;gap:18px;margin-top:14px}.artwork-designer-canvas-wrap{display:grid;gap:7px}.artwork-designer-canvas-wrap canvas{width:min(576px,100%);aspect-ratio:1;border:1px solid #cbd5e1;border-radius:12px;background:#fff;cursor:crosshair;touch-action:none}.artwork-designer-canvas-wrap small{color:#728094}.artwork-designer-tools{display:flex;flex-direction:column;gap:13px}.artwork-designer-tools label{display:grid;gap:6px}.artwork-designer-tools label span,.designer-label{font-size:8px;font-weight:900;color:#7a8798;letter-spacing:.08em}.artwork-designer-tools input,.artwork-designer-tools select{padding:10px;border-radius:10px}.artwork-designer-palette{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}.artwork-designer-palette button{width:28px;height:28px;border-radius:8px;border:2px solid #fff;box-shadow:0 0 0 1px #cfd9e4;cursor:pointer}.artwork-designer-palette button.active{outline:2px solid #172033;outline-offset:1px}.designer-actions{display:flex;gap:7px}.designer-actions button.active{background:#172033!important;color:#fff!important}.designer-anchor{padding:11px;border-radius:10px;background:#f4f7fa;border:1px solid #dce4ed}.designer-anchor small{display:block;font-size:8px;color:#8090a3}.designer-anchor strong{display:block;margin-top:4px;font-size:10px}.artwork-card{box-shadow:none!important}
 .leader-music{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:9px;width:min(520px,calc(100vw - 30px));padding:9px 10px;border-radius:15px;background:rgba(255,255,255,.96);border:1px solid #d7e1eb;box-shadow:0 12px 36px rgba(51,65,85,.15);backdrop-filter:blur(10px)}.leader-music-dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}.leader-music-copy{min-width:0;display:flex;flex-direction:column}.leader-music-copy small{font-size:7px;font-weight:900;color:#8693a3}.leader-music-copy strong{font-size:10px;color:#1f2d40}.leader-music-copy span{font-size:8px;color:#68788c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.leader-music button{margin-left:auto;padding:8px 10px;border-radius:9px;border:1px solid #f1bad2;background:#fff2f8;color:#c72d70;font-size:8px;font-weight:900;cursor:pointer}.leader-youtube-player{position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;overflow:hidden}
 @media(max-width:700px){.artwork-designer-layout{grid-template-columns:1fr}.artwork-designer-tools{padding-bottom:10px}.leaderboard-modal,.artwork-designer-modal{padding:8px}.leaderboard-modal-card,.artwork-designer-card{width:100%;max-height:94vh;border-radius:18px}.leader-music{bottom:64px}.leaderboard-modal-toolbar{flex-wrap:wrap}.leaderboard-modal-toolbar select{width:100%;margin-left:0}}
+
+
+/* =========================================================
+   V21.1 · visual polish + status contrast + dock placement
+   ========================================================= */
+/* Rounded light-theme surfaces: remove the remaining sharp rectangular islands. */
+.stats-block{
+  border:1px solid #dfe7ef!important;
+  border-radius:16px!important;
+  padding:14px!important;
+  background:#fff!important;
+  box-shadow:0 8px 24px rgba(51,65,85,.05)!important;
+}
+.stat-row{padding:9px 4px!important}
+.reward-line{
+  border:1px solid #e3e9ef!important;
+  border-radius:12px!important;
+  padding:10px 12px!important;
+  margin-top:12px!important;
+  background:#fbfdff!important;
+}
+.history-controls{
+  border:1px solid #dfe7ef!important;
+  border-radius:14px!important;
+  padding:10px!important;
+  background:#f8fbfe!important;
+}
+.history-controls button,.history-controls select{border-radius:10px!important}
+.season-list-item{border-radius:14px!important;padding:14px!important}
+.mobile-stat-grid>div{border-radius:12px!important}
+.season-clock{border-radius:12px!important}
+.event-card{border-radius:16px!important}
+.province-owner,.defense-summary,.foreign-alert,.foreign-clean,.province-metric{border-radius:11px!important}
+.player-battle-stats>div,.daily-mission,.team-target-mini,.attack-metric,.region-row,.leader-row,.log-item{border-radius:11px!important}
+
+/* Accessible status pills on white backgrounds (welcome, season archive, live cards). */
+.live-badge,
+#welcomeSeasonState,
+.season-list-state{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:24px;
+  padding:5px 9px!important;
+  border-radius:999px!important;
+  font-weight:900!important;
+  letter-spacing:.35px!important;
+  color:#0f684b!important;
+  background:#dcfce7!important;
+  border:1px solid #86efac!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)!important;
+}
+.live-badge.waiting,.season-list-state.waiting{
+  color:#8a5a00!important;background:#fff4cc!important;border-color:#f4cf5f!important;
+}
+.live-badge.finished,.season-list-state.finished{
+  color:#9f2443!important;background:#ffe6ee!important;border-color:#f6a9c0!important;
+}
+.season-list-state.active{color:#0f684b!important;background:#dcfce7!important;border-color:#86efac!important}
+
+/* The leader music dock must never cover pixel colour / placement controls. */
+.leader-music{bottom:82px!important}
+@media(max-width:700px){
+  .leader-music{bottom:132px!important;width:calc(100vw - 18px)!important}
+}
+@media(max-height:650px) and (min-width:701px){
+  .leader-music{bottom:76px!important;transform:translateX(-50%) scale(.94);transform-origin:bottom center}
+}
