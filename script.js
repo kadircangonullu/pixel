@@ -1183,6 +1183,16 @@ function draw() {
     const x = (selectedPixel.x - camera.x) * ps, y = (selectedPixel.y - camera.y) * ps;
     ctx.globalAlpha = .68; ctx.fillStyle = selectedColor; ctx.fillRect(x,y,ps,ps); ctx.globalAlpha = 1;
     ctx.strokeStyle = "#172033"; ctx.lineWidth = 2; ctx.strokeRect(x,y,ps,ps);
+    // V26: high-contrast target brackets stay readable even when a cell is tiny.
+    if (window.innerWidth <= 700) {
+      const cx=x+ps/2, cy=y+ps/2, arm=Math.max(8,Math.min(15,ps*.9)), gap=Math.max(4,Math.min(7,ps*.45));
+      ctx.save();
+      ctx.strokeStyle="rgba(255,255,255,.98)"; ctx.lineWidth=5; ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(cx-arm,cy);ctx.lineTo(cx-gap,cy);ctx.moveTo(cx+gap,cy);ctx.lineTo(cx+arm,cy);ctx.moveTo(cx,cy-arm);ctx.lineTo(cx,cy-gap);ctx.moveTo(cx,cy+gap);ctx.lineTo(cx,cy+arm);ctx.stroke();
+      ctx.strokeStyle="#172033"; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(cx,cy,2.6,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#172033";ctx.lineWidth=1.5;ctx.stroke();
+      ctx.restore();
+    }
   }
   drawMiniMap();
   lastFrameMs = performance.now() - frameStart;
@@ -1244,7 +1254,7 @@ function resetViewToTurkey() {
   if (window.innerWidth <= 700) {
     // On a portrait phone, fitting all of Turkey makes the actual map a thin strip.
     // Start closer, Wplace-style: the map fills the useful viewport and the user pans.
-    const mobileMapZoom = Math.max(.58, Math.min(.82, r.width / (WORLD_WIDTH * .42)));
+    const mobileMapZoom = Math.max(.66, Math.min(.96, r.width / (WORLD_WIDTH * .36)));
     camera.zoom = Math.max(containZoom, mobileMapZoom);
   } else {
     camera.zoom = containZoom;
@@ -2478,11 +2488,92 @@ document.getElementById("historyViewMode")?.addEventListener("change",drawHistor
 document.getElementById("historyModal")?.addEventListener("click",e=>{if(e.target.id==="historyModal")closeHistoryModal();});
 document.querySelectorAll("[data-mobile]").forEach(btn=>btn.addEventListener("click",()=>{const t=btn.dataset.mobile;if(t==="map")resetViewToTurkey();else if(t==="ownership"){viewMode="ownership";document.querySelectorAll(".view-btn").forEach(x=>x.classList.toggle("active",x.dataset.view==="ownership"));scheduleDraw();}else if(t==="team")openTeamCenter();else if(t==="history")openHistoryModal();else if(t==="account")openProfileModal();}));
 
-// Touch: one finger drag, tap select; two finger pinch zoom.
+// V26 touch map interaction: anchored pinch zoom + kinetic one-finger pan + tap select.
 let v17Touches=null;
-canvas.addEventListener("touchstart",e=>{if(!mapReady)return;if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];v17Touches={mode:"pinch",dist:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),zoom:camera.zoom,cx:(a.clientX+b.clientX)/2,cy:(a.clientY+b.clientY)/2};}else if(e.touches.length===1){const t=e.touches[0];v17Touches={mode:"drag",sx:t.clientX,sy:t.clientY,cx:camera.x,cy:camera.y,moved:false};}e.preventDefault();},{passive:false});
-canvas.addEventListener("touchmove",e=>{if(!v17Touches)return;if(v17Touches.mode==="pinch"&&e.touches.length===2){const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);const r=canvas.getBoundingClientRect();setZoom(v17Touches.zoom*(d/v17Touches.dist),v17Touches.cx-r.left,v17Touches.cy-r.top);}else if(v17Touches.mode==="drag"&&e.touches.length===1){const t=e.touches[0],dx=t.clientX-v17Touches.sx,dy=t.clientY-v17Touches.sy;if(Math.abs(dx)>5||Math.abs(dy)>5)v17Touches.moved=true;camera.x=v17Touches.cx-dx/camera.zoom;camera.y=v17Touches.cy-dy/camera.zoom;clampCamera();scheduleDraw();}e.preventDefault();},{passive:false});
-canvas.addEventListener("touchend",e=>{if(v17Touches?.mode==="drag"&&!v17Touches.moved){const t=e.changedTouches[0],c=getWorldCoordinates(t.clientX,t.clientY);selectedPixel=isLand(c.x,c.y)?c:null;if(selectedPixel){const provinceName=provinceAt(c.x,c.y);hoveredProvinceName=provinceName;const hover=document.getElementById("hoverRegion");if(hover)hover.textContent=provinceName?`${provinceName} · ${getRegionNameForProvince(provinceName)}`:"Türkiye dışı";renderProvinceSpotlight(provinceName);renderPixelInspector(c.x,c.y);}scheduleDraw();}v17Touches=null;});
+let mobilePanRaf=0;
+function stopMobilePanMomentum(){
+  if(mobilePanRaf){cancelAnimationFrame(mobilePanRaf);mobilePanRaf=0;}
+}
+function startMobilePanMomentum(vx,vy){
+  stopMobilePanMomentum();
+  // velocity is in world units / ms; a short decay feels map-like without becoming slippery.
+  let last=performance.now();
+  const step=now=>{
+    const dt=Math.min(32,now-last); last=now;
+    camera.x+=vx*dt; camera.y+=vy*dt; clampCamera(); scheduleDraw();
+    const decay=Math.pow(.92,dt/16.67); vx*=decay; vy*=decay;
+    if(Math.hypot(vx,vy)<.002){mobilePanRaf=0;return;}
+    mobilePanRaf=requestAnimationFrame(step);
+  };
+  mobilePanRaf=requestAnimationFrame(step);
+}
+function beginPinch(a,b){
+  const r=canvas.getBoundingClientRect();
+  const cx=(a.clientX+b.clientX)/2-r.left, cy=(a.clientY+b.clientY)/2-r.top;
+  v17Touches={
+    mode:"pinch",
+    dist:Math.max(1,Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)),
+    zoom:camera.zoom,
+    worldX:camera.x+cx/camera.zoom,
+    worldY:camera.y+cy/camera.zoom
+  };
+}
+canvas.addEventListener("touchstart",e=>{
+  if(!mapReady)return; stopMobilePanMomentum();
+  if(e.touches.length>=2){beginPinch(e.touches[0],e.touches[1]);}
+  else if(e.touches.length===1){
+    const t=e.touches[0],now=performance.now();
+    v17Touches={mode:"drag",sx:t.clientX,sy:t.clientY,lastX:t.clientX,lastY:t.clientY,lastT:now,cx:camera.x,cy:camera.y,moved:false,vx:0,vy:0};
+  }
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener("touchmove",e=>{
+  if(!v17Touches||!mapReady)return;
+  if(e.touches.length>=2){
+    const a=e.touches[0],b=e.touches[1];
+    if(v17Touches.mode!=="pinch")beginPinch(a,b);
+    const d=Math.max(1,Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY));
+    const r=canvas.getBoundingClientRect();
+    const cx=(a.clientX+b.clientX)/2-r.left, cy=(a.clientY+b.clientY)/2-r.top;
+    camera.zoom=Math.max(effectiveMinZoom(),Math.min(MAX_ZOOM,v17Touches.zoom*(d/v17Touches.dist)));
+    camera.x=v17Touches.worldX-cx/camera.zoom; camera.y=v17Touches.worldY-cy/camera.zoom;
+    clampCamera(); scheduleDraw();
+  }else if(v17Touches.mode==="drag"&&e.touches.length===1){
+    const t=e.touches[0],now=performance.now(),dx=t.clientX-v17Touches.sx,dy=t.clientY-v17Touches.sy;
+    if(Math.abs(dx)>5||Math.abs(dy)>5)v17Touches.moved=true;
+    camera.x=v17Touches.cx-dx/camera.zoom; camera.y=v17Touches.cy-dy/camera.zoom;
+    const dt=Math.max(8,now-v17Touches.lastT);
+    // camera moves opposite to finger movement. Smooth velocity to avoid a jump on release.
+    const nvx=-(t.clientX-v17Touches.lastX)/camera.zoom/dt, nvy=-(t.clientY-v17Touches.lastY)/camera.zoom/dt;
+    v17Touches.vx=v17Touches.vx*.68+nvx*.32; v17Touches.vy=v17Touches.vy*.68+nvy*.32;
+    v17Touches.lastX=t.clientX; v17Touches.lastY=t.clientY; v17Touches.lastT=now;
+    clampCamera(); scheduleDraw();
+  }
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener("touchend",e=>{
+  if(v17Touches?.mode==="drag"){
+    if(!v17Touches.moved&&e.changedTouches[0]){
+      const t=e.changedTouches[0],c=getWorldCoordinates(t.clientX,t.clientY);
+      selectedPixel=isLand(c.x,c.y)?c:null;
+      if(selectedPixel){
+        const provinceName=provinceAt(c.x,c.y); hoveredProvinceName=provinceName;
+        const hover=document.getElementById("hoverRegion");
+        if(hover)hover.textContent=provinceName?`${provinceName} · ${getRegionNameForProvince(provinceName)}`:"Türkiye dışı";
+        renderProvinceSpotlight(provinceName); renderPixelInspector(c.x,c.y);
+      }
+      scheduleDraw();
+    }else if(v17Touches.moved){
+      startMobilePanMomentum(v17Touches.vx,v17Touches.vy);
+    }
+  }
+  if(e.touches.length===1){
+    const t=e.touches[0],now=performance.now();
+    v17Touches={mode:"drag",sx:t.clientX,sy:t.clientY,lastX:t.clientX,lastY:t.clientY,lastT:now,cx:camera.x,cy:camera.y,moved:true,vx:0,vy:0};
+  }else if(e.touches.length===0){v17Touches=null;}
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener("touchcancel",()=>{v17Touches=null;stopMobilePanMomentum();},{passive:true});
 
 document.getElementById("logoutBtn")?.addEventListener("click", signOutFanverse);
 document.getElementById("welcomeLoginBtn")?.addEventListener("click", () => { hideWelcome(); openAuthModal(); document.getElementById("authEmail")?.focus(); });
