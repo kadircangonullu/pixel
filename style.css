@@ -433,3 +433,62 @@ input,select,textarea{background:#fff!important;color:var(--v21-text)!important;
   .confirm-modal:not(.hidden),.profile-modal:not(.hidden),.season-modal:not(.hidden),.guide-modal:not(.hidden),.history-modal:not(.hidden),.team-center-modal:not(.hidden),.notifications-modal:not(.hidden),.leaderboard-modal:not(.hidden),.artwork-designer-modal:not(.hidden),
   .confirm-modal:not(.hidden) .confirm-card,.profile-modal:not(.hidden) .profile-modal-card,.season-modal:not(.hidden) .season-modal-card,.guide-modal:not(.hidden) .guide-card,.history-modal:not(.hidden) .history-card,.team-center-modal:not(.hidden) .team-center-card,.notifications-modal:not(.hidden) .notifications-card,.leaderboard-modal:not(.hidden) .leaderboard-modal-card,.artwork-designer-modal:not(.hidden) .artwork-designer-card{animation:none!important}
 }
+
+/* =========================================================
+   V21.4 · mobile performance patch
+   Keep the app-like UX, but avoid expensive compositing/layout work on phones.
+   ========================================================= */
+
+/* Permanent will-change layers consume a surprising amount of mobile GPU memory. */
+.right-panel,.profile-modal-card,.season-modal-card,.guide-card,.history-card,.team-center-card,.notifications-card,.leaderboard-modal-card,.artwork-designer-card,.confirm-card{
+  will-change:auto!important;
+}
+
+@media(max-width:700px){
+  /* Large blurred backdrops are among the most expensive mobile effects. */
+  .auth-modal,.team-lock-modal,.profile-modal,.season-modal,.season-result-modal,.guide-modal,.history-modal,.team-center-modal,.notifications-modal,.leaderboard-modal,.artwork-designer-modal,.confirm-modal{
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+
+  /* Only animate the compositor-friendly transform. Opacity on the entire,
+     content-heavy panel caused a full-screen repaint on several Android GPUs. */
+  .right-panel{
+    transition:transform .22s cubic-bezier(.2,.82,.2,1)!important;
+    opacity:1!important;
+    contain:layout paint style;
+    overscroll-behavior:contain;
+    box-shadow:0 -8px 20px rgba(51,65,85,.075)!important;
+  }
+  .right-panel.mobile-open{opacity:1!important}
+
+  /* Off-screen cards inside the long mobile panel can skip layout/paint until
+     they approach the viewport. */
+  .right-panel .panel-card,
+  .right-panel .stats-block,
+  .right-panel .event-card,
+  .right-panel .team-card,
+  .right-panel .mobile-panel-section{
+    content-visibility:auto;
+    contain-intrinsic-size:120px;
+  }
+
+  /* Reduce costly layered shadows while keeping the same visual hierarchy. */
+  .canvas-section{box-shadow:0 6px 18px rgba(51,65,85,.075)!important}
+  .mobile-nav{box-shadow:0 -5px 16px rgba(51,65,85,.075)!important}
+  .mobile-pixel-sheet{box-shadow:0 7px 18px rgba(51,65,85,.10)!important}
+  .leader-music{box-shadow:0 5px 14px rgba(51,65,85,.09)!important}
+
+  /* Opening a modal no longer animates the full-screen overlay itself. Only
+     the smaller card moves, which is significantly cheaper. */
+  .confirm-modal:not(.hidden),.profile-modal:not(.hidden),.season-modal:not(.hidden),.guide-modal:not(.hidden),.history-modal:not(.hidden),.team-center-modal:not(.hidden),.notifications-modal:not(.hidden),.leaderboard-modal:not(.hidden),.artwork-designer-modal:not(.hidden){
+    animation:none!important;
+  }
+  .confirm-modal:not(.hidden) .confirm-card,.profile-modal:not(.hidden) .profile-modal-card,.season-modal:not(.hidden) .season-modal-card,.guide-modal:not(.hidden) .guide-card,.history-modal:not(.hidden) .history-card,.team-center-modal:not(.hidden) .team-center-card,.notifications-modal:not(.hidden) .notifications-card,.leaderboard-modal:not(.hidden) .leaderboard-modal-card,.artwork-designer-modal:not(.hidden) .artwork-designer-card{
+    animation-duration:.16s!important;
+  }
+
+  /* :has() on a large canvas subtree can force expensive style invalidation
+     on older Android browsers. Keep the map height stable instead. */
+  .canvas-section:has(.mobile-pixel-sheet.show) .canvas-wrapper{min-height:0!important}
+}

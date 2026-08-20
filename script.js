@@ -440,54 +440,77 @@ async function loadTurkeyMap() {
 }
 
 function healProvinceSeams() {
-  // Only repair tiny gaps that sit BETWEEN TWO DIFFERENT provinces.
-  // Never fill water that separates two parts of the SAME province (e.g. İstanbul Boğazı).
-  // A single conservative pass avoids expanding coastlines or narrow channels.
-  const fixes = [];
+  // V21.4 performance: same conservative seam repair, but without allocating
+  // arrays / Sets / Maps for every one of the ~885k map cells.
+  const fixIndices = [];
+  const fixOwners = [];
+
   for (let y = 1; y < WORLD_HEIGHT - 1; y++) {
+    const row = y * WORLD_WIDTH;
     for (let x = 1; x < WORLD_WIDTH - 1; x++) {
-      const i = idx(x, y);
+      const i = row + x;
       if (provinceIndexGrid[i]) continue;
 
-      const n = [
-        provinceIndexGrid[idx(x - 1, y)], provinceIndexGrid[idx(x + 1, y)],
-        provinceIndexGrid[idx(x, y - 1)], provinceIndexGrid[idx(x, y + 1)],
-        provinceIndexGrid[idx(x - 1, y - 1)], provinceIndexGrid[idx(x + 1, y - 1)],
-        provinceIndexGrid[idx(x - 1, y + 1)], provinceIndexGrid[idx(x + 1, y + 1)]
-      ];
-      const landNeighbors = n.filter(Boolean);
-      const distinct = [...new Set(landNeighbors)];
-      const orthBridge = (n[0] && n[1] && n[0] !== n[1]) || (n[2] && n[3] && n[2] !== n[3]);
+      const l  = provinceIndexGrid[i - 1];
+      const r  = provinceIndexGrid[i + 1];
+      const u  = provinceIndexGrid[i - WORLD_WIDTH];
+      const d  = provinceIndexGrid[i + WORLD_WIDTH];
+      const ul = provinceIndexGrid[i - WORLD_WIDTH - 1];
+      const ur = provinceIndexGrid[i - WORLD_WIDTH + 1];
+      const dl = provinceIndexGrid[i + WORLD_WIDTH - 1];
+      const dr = provinceIndexGrid[i + WORLD_WIDTH + 1];
 
-      // Require strong surrounding land AND at least two different provinces.
-      // This fixes raster seams but preserves same-province waterways and bays.
-      if (distinct.length < 2) continue;
-      if (!orthBridge && landNeighbors.length < 6) continue;
-      if (orthBridge && landNeighbors.length < 4) continue;
+      const orthBridge = (l && r && l !== r) || (u && d && u !== d);
+      let landCount = 0;
+      let first = 0, second = 0;
+      let best = 0, bestCount = 0;
 
-      const freq = new Map();
-      for (const v of landNeighbors) freq.set(v, (freq.get(v) || 0) + 1);
-      const winner = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-      if (winner) fixes.push([i, winner]);
+      // Only eight primitive checks. This avoids hundreds of thousands of
+      // temporary arrays and is much friendlier to mobile garbage collectors.
+      const consider = (v) => {
+        if (!v) return;
+        landCount++;
+        if (!first) first = v;
+        else if (v !== first && !second) second = v;
+        let count = 0;
+        if (l===v) count++; if (r===v) count++; if (u===v) count++; if (d===v) count++;
+        if (ul===v) count++; if (ur===v) count++; if (dl===v) count++; if (dr===v) count++;
+        if (count > bestCount) { bestCount = count; best = v; }
+      };
+      consider(l); consider(r); consider(u); consider(d);
+      consider(ul); consider(ur); consider(dl); consider(dr);
+
+      if (!second) continue; // needs at least two different provinces
+      if (!orthBridge && landCount < 6) continue;
+      if (orthBridge && landCount < 4) continue;
+      if (!best) continue;
+
+      fixIndices.push(i);
+      fixOwners.push(best);
     }
   }
 
-  for (const [i, winner] of fixes) {
-    provinceIndexGrid[i] = winner;
+  for (let n = 0; n < fixIndices.length; n++) {
+    const i = fixIndices[n];
+    provinceIndexGrid[i] = fixOwners[n];
     colorGrid[i] = MATERIAL_LAND;
   }
 
+  // Recalculate totals in one allocation-free pass.
   provinceCellTotals.clear();
   totalPlayablePixels = 0;
+  const totals = new Uint32Array(provinceNamesByIndex.length);
   for (let i = 0; i < CELL_COUNT; i++) {
     const pi = provinceIndexGrid[i];
     if (!pi) continue;
-    const name = provinceNamesByIndex[pi];
-    provinceCellTotals.set(name, (provinceCellTotals.get(name) || 0) + 1);
+    totals[pi]++;
     totalPlayablePixels++;
   }
+  for (let pi = 1; pi < totals.length; pi++) {
+    const name = provinceNamesByIndex[pi];
+    if (name) provinceCellTotals.set(name, totals[pi]);
+  }
 }
-
 function rasterizeProvinces() {
   provinceNamesByIndex.length = 1;
   provinceIndexByName.clear();
@@ -523,7 +546,6 @@ function rasterizeProvinces() {
   });
 
   healProvinceSeams();
-  rebuildWorldLayer();
   rebuildBorderLayer();
 }
 
@@ -1505,7 +1527,7 @@ document.getElementById("saveProfileBtn")?.addEventListener("click",async()=>{
 });
 document.getElementById("profileModal")?.addEventListener("click",e=>{ if(e.target.id==="profileModal") e.currentTarget.classList.add("hidden"); });
 
-function renderAll() { renderTeams(); renderRegionBoard(); renderLeaderboard(); renderProvinceSpotlight(hoveredProvinceName); renderAttackCenter(); updateGlobalStats(); renderProgression(); }
+function renderAll() { renderTeams(); renderRegionBoard(); renderLeaderboard(); renderProvinceSpotlight(hoveredProvinceName); renderAttackCenter(); updateGlobalStats(); renderProgression(); window.requestMobileParitySync?.(); }
 
 
 // V10 — season lifecycle / archive / result screen
@@ -2500,7 +2522,7 @@ window.addEventListener("error",event=>{
 });
 if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok. Canlı veriler geçici olarak güncellenemiyor.");
 
-// V18.1 · Mobile parity helpers
+// V18.1 / V21.4 · Mobile parity helpers (throttled)
 (function initMobileParity(){
   const panel = document.getElementById("rightPanel");
   const closeBtn = document.getElementById("closeMobilePanelBtn");
@@ -2509,16 +2531,45 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
     ["onlineCount","mobileOnlineCount"],["pixelCount","mobilePixelCount"],["seasonPixelCount","mobileSeasonPixelCount"],
     ["seasonPlayerCount","mobileSeasonPlayerCount"],["playableCount","mobilePlayableCount"],["provinceCount","mobileProvinceCount"],["securedCount","mobileSecuredCount"]
   ];
-  function syncMobilePublicStats(){
-    for(const [srcId,dstId] of mirrorPairs){const src=document.getElementById(srcId),dst=document.getElementById(dstId);if(src&&dst)dst.textContent=src.textContent;}
+  let lastTeamSignature = "";
+  let syncFrame = 0;
+
+  function syncMobilePublicStats(force=false){
+    // The mirrored panel is off-screen most of the time. Don't repeatedly
+    // rebuild its DOM while the user is interacting with the map.
+    if(!force && !panel?.classList.contains("mobile-open")) return;
+    for(const [srcId,dstId] of mirrorPairs){
+      const src=document.getElementById(srcId),dst=document.getElementById(dstId);
+      if(src&&dst&&dst.textContent!==src.textContent) dst.textContent=src.textContent;
+    }
     const list=document.getElementById("mobileTeamList");
     if(list){
-      list.innerHTML=teams.map(team=>`<div class="mobile-team-copy"><i style="background:${team.color}"></i><strong>${team.name}</strong><small>${Number(team.points||0).toLocaleString("tr-TR")} puan · ${Number(team.capturedProvinces||0)} il</small></div>`).join("");
+      const sig=teams.map(t=>`${t.id}:${Number(t.points||0)}:${Number(t.capturedProvinces||0)}`).join("|");
+      if(force || sig!==lastTeamSignature){
+        lastTeamSignature=sig;
+        list.innerHTML=teams.map(team=>`<div class="mobile-team-copy"><i style="background:${team.color}"></i><strong>${team.name}</strong><small>${Number(team.points||0).toLocaleString("tr-TR")} puan · ${Number(team.capturedProvinces||0)} il</small></div>`).join("");
+      }
     }
     const desktopAdmin=document.getElementById("adminPanelBtn"),mobileAdmin=document.getElementById("mobileAdminLink");
     if(mobileAdmin&&desktopAdmin) mobileAdmin.classList.toggle("hidden",desktopAdmin.classList.contains("hidden")||!authUser);
   }
-  function openMobilePanel(){if(!panel)return;syncMobilePublicStats();panel.classList.add("mobile-open");mobilePanelBtn?.classList.add("active");document.body.classList.add("mobile-panel-open");}
+
+  window.requestMobileParitySync = function(){
+    if(!panel?.classList.contains("mobile-open") || syncFrame) return;
+    syncFrame=requestAnimationFrame(()=>{syncFrame=0;syncMobilePublicStats(false);});
+  };
+
+  function openMobilePanel(){
+    if(!panel)return;
+    syncMobilePublicStats(true);
+    // One RAF lets the browser commit the closed state first, preventing a
+    // forced style/layout burst on slower phones.
+    requestAnimationFrame(()=>{
+      panel.classList.add("mobile-open");
+      mobilePanelBtn?.classList.add("active");
+      document.body.classList.add("mobile-panel-open");
+    });
+  }
   function closeMobilePanel(){panel?.classList.remove("mobile-open");mobilePanelBtn?.classList.remove("active");document.body.classList.remove("mobile-panel-open");}
   mobilePanelBtn?.addEventListener("click",openMobilePanel);
   closeBtn?.addEventListener("click",closeMobilePanel);
@@ -2528,10 +2579,5 @@ if(!navigator.onLine) setConnectionBanner("offline","İnternet bağlantısı yok
   document.getElementById("mobileNotificationsBtn")?.addEventListener("click",()=>{closeMobilePanel();openNotifications();});
   document.getElementById("mobileTeamCenterBtn")?.addEventListener("click",()=>{closeMobilePanel();openTeamCenter();});
   document.querySelectorAll('.mobile-nav [data-mobile]:not([data-mobile="panel"])').forEach(btn=>btn.addEventListener("click",closeMobilePanel));
-  window.addEventListener("resize",()=>{if(window.innerWidth>700)closeMobilePanel();});
-  const obs=new MutationObserver(syncMobilePublicStats);
-  for(const [srcId] of mirrorPairs){const el=document.getElementById(srcId);if(el)obs.observe(el,{childList:true,characterData:true,subtree:true});}
-  const leaderboard=document.getElementById("leaderboard");if(leaderboard)obs.observe(leaderboard,{childList:true,subtree:true});
-  setInterval(syncMobilePublicStats,2000);
-  syncMobilePublicStats();
-})();
+  window.addEventListener("resize",()=>{if(window.innerWidth>700)closeMobilePanel();},{passive:true});
+})();;
