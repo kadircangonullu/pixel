@@ -320,3 +320,58 @@ input,select,textarea{background:#fff!important;color:var(--v21-text)!important;
 @media(max-height:650px) and (min-width:701px){
   .leader-music{bottom:76px!important;transform:translateX(-50%) scale(.94);transform-origin:bottom center}
 }
+
+/* =========================================================
+   V21.2 · refined surfaces + compact music + mobile redesign
+   ========================================================= */
+/* Sidebar sections are groups, not rectangular cards. */
+.sidebar-block{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important}
+.sidebar-block+.sidebar-block{padding-top:18px!important;border-top:1px solid #e7edf3!important}
+.team-list{gap:9px!important}.team-card{border-radius:15px!important;padding:12px 12px!important;box-shadow:0 5px 16px rgba(51,65,85,.045)!important}
+.team-card:before{width:4px!important;border-radius:0 4px 4px 0}.home-city{border-radius:999px!important;padding:4px 8px!important}
+.stats-block{border-radius:18px!important}.panel-card{border-radius:18px!important}.event-card{border-radius:18px!important}
+
+/* All modal/inspector X controls are clean icon buttons without grey square tiles. */
+.inspector-head button,.team-center-head>button,.profile-modal-head>button,.season-modal-head>button,.guide-head>button,.history-head>button,.notifications-head>button,
+#closeLeaderboardModalBtn,#closeArtworkDesignerBtn,#closeTeamCenterBtn,#closeNotificationsBtn{
+  background:transparent!important;border:0!important;box-shadow:none!important;border-radius:50%!important;color:#718096!important;width:32px!important;height:32px!important;padding:0!important;display:grid!important;place-items:center!important;font-size:21px!important;line-height:1!important;cursor:pointer!important
+}
+.inspector-head button:hover,.team-center-head>button:hover,.profile-modal-head>button:hover,.season-modal-head>button:hover,.guide-head>button:hover,.history-head>button:hover,.notifications-head>button:hover,
+#closeLeaderboardModalBtn:hover,#closeArtworkDesignerBtn:hover{background:#f3f6f9!important;color:#243247!important}
+
+/* Compact music dock: desktop uses the otherwise empty strip above the map instead of the pixel toolbar. */
+.leader-music{top:76px!important;bottom:auto!important;left:50%!important;width:min(350px,calc(100vw - 660px))!important;min-width:270px!important;padding:7px 9px!important;border-radius:999px!important;box-shadow:0 8px 24px rgba(51,65,85,.12)!important;z-index:54!important}
+.leader-music-dot{width:9px!important;height:9px!important}.leader-music-copy small{font-size:6px!important}.leader-music-copy strong{font-size:9px!important}.leader-music-copy span{font-size:7px!important}.leader-music button{padding:6px 9px!important;border-radius:999px!important;font-size:7px!important}
+
+@media(max-width:700px){
+  /* App chrome */
+  body{background:#f4f7fb!important;padding-bottom:calc(68px + env(safe-area-inset-bottom))!important}
+  .topbar{height:54px!important;padding:0 12px!important;border-radius:0 0 16px 16px!important;box-shadow:0 5px 18px rgba(51,65,85,.06)!important}
+  .content{height:calc(100dvh - 54px - 68px - env(safe-area-inset-bottom))!important;padding:8px!important;display:block!important}
+  .canvas-section{height:100%!important;border-radius:20px!important;box-shadow:0 12px 34px rgba(51,65,85,.10)!important}
+  .canvas-header{min-height:72px!important;padding:9px 10px!important;align-items:flex-start!important}
+  .live-title{padding-top:5px!important}.live-title strong{font-size:9px!important}.canvas-tools{width:100%!important;justify-content:flex-end!important}
+  .view-switch{order:2!important;width:100%!important;border-radius:14px!important;padding:4px!important;gap:3px!important}.view-btn{min-height:38px!important;border-radius:11px!important;font-size:9px!important;letter-spacing:.4px!important}
+  .tool-btn{display:none!important}
+
+  /* Map opens as a complete Turkey overview; users can pinch in afterwards. */
+  .canvas-wrapper{min-height:0!important;border-radius:0!important;background:#edf5fc!important}
+  .hover-region{top:12px!important;left:12px!important;border-radius:12px!important;padding:9px 12px!important;font-size:9px!important}
+  .minimap-wrap{width:128px!important;height:60px!important;right:10px!important;bottom:10px!important;transform:none!important;border-radius:13px!important;opacity:.92}
+  .pixel-inspector{left:10px!important;right:10px!important;bottom:10px!important;width:auto!important;border-radius:16px!important;padding:11px!important}
+
+  /* Pixel action tray looks like one deliberate mobile control surface. */
+  .pixel-controls{grid-template-columns:92px minmax(0,1fr)!important;gap:8px!important;padding:9px 10px 10px!important;background:#fff!important;border-top:1px solid #e5ebf1!important;box-shadow:0 -8px 24px rgba(51,65,85,.055)!important}
+  .pixel-controls .cooldown{border-radius:13px!important;background:#f6f9fc!important;border-color:#e1e8ef!important;min-height:44px!important}
+  .pixel-controls #placePixelBtn{border-radius:13px!important;min-height:44px!important;font-size:9px!important}
+  .pixel-controls .palette{gap:7px!important;padding:4px 2px 3px!important;scrollbar-width:none}.pixel-controls .palette::-webkit-scrollbar{display:none}
+  .color-btn{flex-basis:38px!important;width:38px!important;height:38px!important;border-radius:10px!important}
+
+  /* Music becomes a tiny top-left status pill, away from map actions and bottom navigation. */
+  .leader-music{top:7px!important;bottom:auto!important;left:10px!important;transform:none!important;width:220px!important;min-width:0!important;max-width:calc(100vw - 118px)!important;padding:6px 8px!important;border-radius:13px!important;z-index:1160!important}
+  .leader-music-copy small{display:none!important}.leader-music-copy strong{font-size:8px!important}.leader-music-copy span{font-size:6px!important;max-width:92px!important}.leader-music button{font-size:6px!important;padding:6px 7px!important}
+
+  .mobile-nav{height:calc(68px + env(safe-area-inset-bottom))!important;background:rgba(255,255,255,.98)!important;border-radius:18px 18px 0 0!important;box-shadow:0 -8px 28px rgba(51,65,85,.10)!important;padding:5px 7px env(safe-area-inset-bottom)!important}
+  .mobile-nav button{border-radius:13px!important;color:#718096!important;font-size:18px!important}.mobile-nav button span{font-size:8px!important}.mobile-nav button.active{background:#fff0f7!important;color:#d92f79!important}
+  .right-panel{bottom:calc(68px + env(safe-area-inset-bottom))!important;border-radius:22px 22px 0 0!important;background:#f7f9fc!important}.mobile-panel-head{border-radius:22px 22px 0 0!important}
+}

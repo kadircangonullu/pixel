@@ -287,6 +287,7 @@ let foreignCursor = -1;
 let foreignCursorProvince = null;
 let camera = { x: 28, y: 8, zoom: 2.2 };
 const MIN_ZOOM = 1.45;
+function effectiveMinZoom(){ return window.innerWidth <= 700 ? 0.20 : MIN_ZOOM; }
 const MAX_ZOOM = 48;
 let isDragging = false;
 let dragStartX = 0, dragStartY = 0, cameraStartX = 0, cameraStartY = 0, mouseMovedWhileDragging = false;
@@ -939,7 +940,7 @@ function findNextForeignPixel(provinceName = hoveredProvinceName) {
 
 function centerCameraOnPixel(x,y,targetZoom=14) {
   const r = canvas.getBoundingClientRect();
-  camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom));
+  camera.zoom = Math.max(effectiveMinZoom(), Math.min(MAX_ZOOM, targetZoom));
   camera.x = x + .5 - r.width / camera.zoom / 2;
   camera.y = y + .5 - r.height / camera.zoom / 2;
   clampCamera(); scheduleDraw();
@@ -1092,6 +1093,14 @@ function resizeCanvas() {
   scheduleDraw();
 }
 window.addEventListener("resize", resizeCanvas);
+let lastViewportClass = window.innerWidth <= 700 ? "mobile" : "desktop";
+window.addEventListener("resize", () => {
+  const nextClass = window.innerWidth <= 700 ? "mobile" : "desktop";
+  if (mapReady && nextClass !== lastViewportClass) {
+    lastViewportClass = nextClass;
+    requestAnimationFrame(() => { resizeCanvas(); resetViewToTurkey(); });
+  }
+});
 
 function refreshMiniBase() {
   if (!miniMapDirty) return;
@@ -1196,13 +1205,13 @@ function clampCamera() {
 }
 function setZoom(value, cx = canvas.clientWidth / 2, cy = canvas.clientHeight / 2) {
   const wx = camera.x + cx / camera.zoom, wy = camera.y + cy / camera.zoom;
-  camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
+  camera.zoom = Math.max(effectiveMinZoom(), Math.min(MAX_ZOOM, value));
   camera.x = wx - cx / camera.zoom; camera.y = wy - cy / camera.zoom; clampCamera(); scheduleDraw();
 }
 function resetViewToTurkey() {
   const r = canvas.getBoundingClientRect();
   const zoomX = r.width / (WORLD_WIDTH + 16), zoomY = r.height / (WORLD_HEIGHT + 20);
-  camera.zoom = Math.max(MIN_ZOOM, Math.min(4.2, Math.min(zoomX, zoomY)));
+  camera.zoom = Math.max(effectiveMinZoom(), Math.min(4.2, Math.min(zoomX, zoomY)));
   camera.x = (WORLD_WIDTH - r.width / camera.zoom) / 2;
   camera.y = (WORLD_HEIGHT - r.height / camera.zoom) / 2;
   clampCamera(); scheduleDraw();
