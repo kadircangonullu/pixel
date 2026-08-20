@@ -766,3 +766,171 @@ body.fv-map-ui .pixel-controls{display:none!important}
 
   body.fv-map-ui .sidebar,body.fv-map-ui .right-panel{left:6px!important;right:6px!important;top:calc(6px + env(safe-area-inset-top))!important;bottom:calc(6px + env(safe-area-inset-bottom))!important;border-radius:20px!important}
 }
+
+/* ============================================================
+   V24 · coherent mobile HUD
+   One visual system instead of scattered floating controls.
+   ============================================================ */
+@media (max-width:700px){
+  /* Mobile is a true full-screen map. Browser chrome is outside our viewport. */
+  body.fv-map-ui{padding:0!important;overflow:hidden!important}
+  body.fv-map-ui .content,
+  body.fv-map-ui .canvas-section,
+  body.fv-map-ui .canvas-wrapper{position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+
+  /* Top row: music on the left, account on the right. No overlapping brand tile. */
+  body.fv-map-ui .fv-brand-chip{display:none!important}
+  body.fv-map-ui .fv-map-hud{left:auto!important;right:12px!important;top:calc(10px + env(safe-area-inset-top))!important;width:auto!important;display:block!important}
+  body.fv-map-ui .fv-hud-right{display:flex!important;gap:8px!important}
+  body.fv-map-ui .fv-profile-chip{width:42px!important;height:42px!important;border:1px solid rgba(148,163,184,.34)!important;box-shadow:0 7px 22px rgba(15,23,42,.12)!important}
+  body.fv-map-ui .fv-guest-auth{height:40px!important;padding:0 14px!important;font-size:7px!important}
+
+  body.fv-map-ui .leader-music{
+    top:calc(10px + env(safe-area-inset-top))!important;
+    left:12px!important;
+    right:auto!important;
+    bottom:auto!important;
+    transform:none!important;
+    width:min(230px,calc(100vw - 78px))!important;
+    min-width:0!important;
+    height:42px!important;
+    padding:5px 7px 5px 9px!important;
+    border-radius:15px!important;
+    display:flex!important;
+    gap:7px!important;
+    box-shadow:0 7px 22px rgba(15,23,42,.11)!important;
+    z-index:54!important;
+  }
+  body.fv-map-ui .leader-music-dot{width:8px!important;height:8px!important}
+  body.fv-map-ui .leader-music-copy{flex:1!important;min-width:0!important}
+  body.fv-map-ui .leader-music-copy small{display:none!important}
+  body.fv-map-ui .leader-music-copy strong{font-size:8px!important;line-height:1.1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.fv-map-ui .leader-music-copy span{font-size:6px!important;max-width:none!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.fv-map-ui .leader-music button{flex:0 0 auto!important;padding:0 8px!important;height:29px!important;font-size:6px!important;border-radius:10px!important}
+
+  /* Province chip lives directly under the top row. */
+  body.fv-map-ui .hover-region{
+    top:calc(62px + env(safe-area-inset-top))!important;
+    left:12px!important;
+    max-width:calc(100vw - 24px)!important;
+    padding:7px 11px!important;
+    border-radius:999px!important;
+    font-size:7px!important;
+    box-shadow:0 6px 18px rgba(15,23,42,.07)!important;
+  }
+
+  /* Right-side system actions are individual circles, not a tall random capsule. */
+  body.fv-map-ui .fv-dock-right{
+    right:12px!important;
+    top:calc(68px + env(safe-area-inset-top))!important;
+    bottom:auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:8px!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  body.fv-map-ui .fv-dock-right button,
+  body.fv-map-ui .fv-dock-right a{
+    width:40px!important;
+    height:40px!important;
+    border:1px solid rgba(148,163,184,.34)!important;
+    border-radius:50%!important;
+    background:rgba(255,255,255,.94)!important;
+    box-shadow:0 7px 20px rgba(15,23,42,.10)!important;
+    color:#617084!important;
+  }
+  body.fv-map-ui .fv-dock-right button:active,
+  body.fv-map-ui .fv-dock-right a:active{background:#172033!important;color:#fff!important;transform:scale(.96)!important}
+  body.fv-map-ui .fv-dock-right svg{width:17px!important;height:17px!important}
+
+  /* Bottom controls form one centred two-level control deck. */
+  body.fv-map-ui .canvas-header{
+    left:50%!important;
+    right:auto!important;
+    bottom:calc(66px + env(safe-area-inset-bottom))!important;
+    width:min(330px,calc(100vw - 24px))!important;
+    transform:translateX(-50%)!important;
+    z-index:48!important;
+  }
+  body.fv-map-ui .canvas-header .canvas-tools{width:100%!important}
+  body.fv-map-ui .view-switch{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:4px!important;
+    padding:5px!important;
+    border-radius:18px 18px 12px 12px!important;
+    border:1px solid rgba(148,163,184,.34)!important;
+    background:rgba(255,255,255,.96)!important;
+    box-shadow:0 9px 25px rgba(15,23,42,.11)!important;
+  }
+  body.fv-map-ui .view-btn{
+    min-width:0!important;
+    width:100%!important;
+    height:34px!important;
+    padding:0 4px!important;
+    border-radius:12px!important;
+    font-size:7px!important;
+    letter-spacing:.25px!important;
+  }
+
+  body.fv-map-ui .fv-dock-left{
+    left:50%!important;
+    right:auto!important;
+    bottom:calc(12px + env(safe-area-inset-bottom))!important;
+    width:min(330px,calc(100vw - 24px))!important;
+    height:48px!important;
+    transform:translateX(-50%)!important;
+    display:flex!important;
+    flex-direction:row!important;
+    justify-content:center!important;
+    align-items:center!important;
+    gap:14px!important;
+    padding:4px 10px!important;
+    border:1px solid rgba(148,163,184,.34)!important;
+    border-radius:12px 12px 18px 18px!important;
+    background:rgba(255,255,255,.96)!important;
+    box-shadow:0 10px 28px rgba(15,23,42,.12)!important;
+  }
+  body.fv-map-ui .fv-dock-left button{
+    width:42px!important;
+    height:38px!important;
+    border-radius:12px!important;
+  }
+  body.fv-map-ui .fv-dock-left svg{width:18px!important;height:18px!important}
+  body.fv-map-ui .fv-dock-left button:active,
+  body.fv-map-ui .fv-dock-left button.active{background:#172033!important;color:#fff!important;transform:scale(.96)!important}
+
+  /* Keep exactly three main gameplay shortcuts on phone. */
+  body.fv-map-ui .fv-dock-left [data-fv-action="regions"],
+  body.fv-map-ui .fv-dock-left [data-fv-action="ranking"],
+  body.fv-map-ui .fv-dock-left [data-fv-action="defense"]{display:none!important}
+
+  /* Placement tray clears the entire bottom deck when it appears. */
+  body.fv-map-ui .mobile-pixel-sheet{
+    left:12px!important;
+    right:12px!important;
+    bottom:calc(126px + env(safe-area-inset-bottom))!important;
+    width:auto!important;
+    max-height:42vh!important;
+    padding:10px!important;
+    border-radius:18px!important;
+    box-shadow:0 14px 36px rgba(15,23,42,.16)!important;
+  }
+
+  body.fv-map-ui .minimap-wrap{display:none!important}
+  body.fv-map-ui .map-tip{display:none!important}
+}
+
+@media (max-width:380px){
+  body.fv-map-ui .leader-music{width:min(205px,calc(100vw - 72px))!important}
+  body.fv-map-ui .canvas-header,
+  body.fv-map-ui .fv-dock-left{width:calc(100vw - 16px)!important}
+  body.fv-map-ui .fv-dock-left{gap:8px!important}
+}

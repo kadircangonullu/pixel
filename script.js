@@ -1222,8 +1222,15 @@ function getWorldCoordinates(clientX, clientY) {
 }
 function clampCamera() {
   const r = canvas.getBoundingClientRect(), vw = r.width / camera.zoom, vh = r.height / camera.zoom;
-  camera.x = Math.max(-25, Math.min(WORLD_WIDTH - vw + 25, camera.x));
-  camera.y = Math.max(-25, Math.min(WORLD_HEIGHT - vh + 25, camera.y));
+
+  // If the visible viewport is larger than the map world on an axis, keep the
+  // world centred instead of pinning it to one edge. This matters especially
+  // on portrait phones, where the canvas is much taller than Turkey's aspect ratio.
+  if (vw >= WORLD_WIDTH + 50) camera.x = (WORLD_WIDTH - vw) / 2;
+  else camera.x = Math.max(-25, Math.min(WORLD_WIDTH - vw + 25, camera.x));
+
+  if (vh >= WORLD_HEIGHT + 50) camera.y = (WORLD_HEIGHT - vh) / 2;
+  else camera.y = Math.max(-25, Math.min(WORLD_HEIGHT - vh + 25, camera.y));
 }
 function setZoom(value, cx = canvas.clientWidth / 2, cy = canvas.clientHeight / 2) {
   const wx = camera.x + cx / camera.zoom, wy = camera.y + cy / camera.zoom;
